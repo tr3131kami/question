@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>サーバーレス 連続クイズメーカー</title>
+  <title>サーバーレス 高機能クイズメーカー</title>
   <style>
     :root {
       --primary: #6366f1;
@@ -31,7 +31,7 @@
       padding: 20px;
     }
 
-    .container { width: 100%; max-width: 580px; }
+    .container { width: 100%; max-width: 600px; }
 
     .card {
       background: var(--card-bg);
@@ -42,9 +42,25 @@
       margin-bottom: 20px;
     }
 
-    .header { text-align: center; margin-bottom: 24px; }
+    .header { text-align: center; margin-bottom: 24px; position: relative; }
     .header h1 { font-size: 1.5rem; margin: 0 0 8px 0; font-weight: 700; }
     .header p { margin: 0; color: var(--text-muted); font-size: 0.9rem; }
+
+    .nav-btn {
+      position: absolute;
+      right: 0;
+      top: 0;
+      background: #f1f5f9;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .nav-btn:hover { background: #e2e8f0; color: var(--text); }
 
     /* 問題作成ブロック */
     .q-block {
@@ -53,7 +69,6 @@
       border-radius: 12px;
       padding: 20px;
       margin-bottom: 20px;
-      position: relative;
     }
 
     .q-block-header {
@@ -75,20 +90,20 @@
       cursor: pointer;
       font-weight: 600;
     }
-    .btn-delete:hover { background: #fca5a5; }
 
     .form-group { margin-bottom: 12px; }
     label { display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 6px; }
 
-    input[type="text"] {
+    input[type="text"], select {
       width: 100%;
       padding: 10px 14px;
       border: 1.5px solid var(--border);
       border-radius: 8px;
       font-size: 0.9rem;
       outline: none;
+      background: #fff;
     }
-    input[type="text"]:focus { border-color: var(--primary); }
+    input[type="text"]:focus, select:focus { border-color: var(--primary); }
 
     .option-input-group {
       display: flex;
@@ -114,7 +129,7 @@
       font-weight: 600;
       cursor: pointer;
     }
-    .btn:hover { background: var(--primary-hover); transform: translateY(-1px); }
+    .btn:hover { background: var(--primary-hover); }
 
     .btn-secondary {
       background: #ffffff;
@@ -124,7 +139,7 @@
     }
     .btn-secondary:hover { background: #f0f3ff; }
 
-    /* プログレスバー & バッジ */
+    /* 解答UI */
     .badge {
       background: #e0e7ff;
       color: var(--primary);
@@ -144,13 +159,8 @@
       overflow: hidden;
       margin-bottom: 20px;
     }
-    .progress-bar {
-      height: 100%;
-      background: var(--primary);
-      width: 0%;
-    }
+    .progress-bar { height: 100%; background: var(--primary); width: 0%; }
 
-    /* 回答ボタン */
     .quiz-option-btn {
       width: 100%;
       padding: 16px;
@@ -166,6 +176,15 @@
     .quiz-option-btn:hover:not(:disabled) { border-color: var(--primary); background: #f0f3ff; }
     .quiz-option-btn.correct { background: #ecfdf5; border-color: var(--success); color: #065f46; font-weight: 700; }
     .quiz-option-btn.incorrect { background: #fef2f2; border-color: var(--error); color: #991b1b; }
+
+    .explanation-box {
+      background: #f1f5f9;
+      border-left: 4px solid var(--primary);
+      padding: 12px 16px;
+      border-radius: 0 8px 8px 0;
+      margin-top: 16px;
+      font-size: 0.9rem;
+    }
 
     #share-area {
       margin-top: 20px;
@@ -187,7 +206,7 @@
   <div id="create-mode" class="card">
     <div class="header">
       <h1>Quiz Maker</h1>
-      <p>複数問作れる連続クイズ作成ツール</p>
+      <p>複数形式対応 クイズメーカー</p>
     </div>
 
     <div id="questions-container"></div>
@@ -204,13 +223,16 @@
   <!-- 回答モード -->
   <div id="play-mode" class="card hidden">
     <div class="header">
-      <span id="quiz-badge" class="badge">問 1 / 1</span>
+      <button class="nav-btn" onclick="goToCreate()">作成画面へ</button>
+      <span id="quiz-badge" class="badge">問 1</span>
       <div class="progress-container"><div id="progress-bar" class="progress-bar"></div></div>
       <h2 id="quiz-question" style="margin: 0; font-size: 1.3rem;"></h2>
     </div>
 
     <div id="options-container"></div>
-    <div id="result-message" style="text-align: center; font-weight: bold; margin-top: 12px; height: 28px;"></div>
+    <div id="result-message" style="text-align: center; font-weight: bold; margin-top: 12px;"></div>
+    <div id="explanation-container" class="explanation-box hidden"></div>
+
     <button id="next-btn" class="btn hidden" onclick="nextQuestion()" style="margin-top: 16px;">次の問題へ</button>
   </div>
 
@@ -220,8 +242,10 @@
       <h1>クイズ終了！ 🎉</h1>
       <p>あなたの回答結果</p>
     </div>
-    <div id="score-display" style="font-size: 3rem; font-weight: 800; color: var(--primary); margin: 20px 0;"></div>
-    <button class="btn" onclick="restartQuiz()">もう一度挑戦する</button>
+    <div id="score-display" style="font-size: 2.8rem; font-weight: 800; color: var(--primary); margin: 20px 0;"></div>
+    
+    <button class="btn" onclick="restartQuiz()" style="margin-bottom: 10px;">もう一度挑戦する</button>
+    <button class="btn btn-secondary" onclick="goToCreate()">自分もクイズを作る</button>
   </div>
 </div>
 
@@ -230,6 +254,11 @@
   let currentQuizData = [];
   let currentQIndex = 0;
   let score = 0;
+
+  // テキストの正規化（全角半角・大文字小文字・空白の表記揺れ吸収）
+  function normalizeText(str) {
+    return str.trim().toLowerCase().replace(/\s+/g, '').replace(/[Ａ-Ｚａ-ｚ０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
+  }
 
   async function sha256(msg) {
     const uint8 = new TextEncoder().encode(msg);
@@ -249,7 +278,46 @@
     return Array.from(crypto.getRandomValues(new Uint8Array(16))).map(b => b.toString(16).padStart(2, '0')).join('');
   }
 
-  // 作成モード：問題ブロックを追加
+  // 作成画面へ移動
+  function goToCreate() {
+    window.location.href = window.location.pathname;
+  }
+
+  // クイズ形式に応じた入力エリアの切り替え
+  function updateTypeUI(id) {
+    const type = document.getElementById(`type-${id}`).value;
+    const area = document.getElementById(`input-area-${id}`);
+    
+    if (type === 'select') {
+      area.innerHTML = `
+        <label>選択肢（ラジオボタンで正解を指定）</label>
+        ${[1, 2, 3, 4].map((n, idx) => `
+          <div class="option-input-group">
+            <input type="radio" name="correct-${id}" value="${idx}" ${idx === 0 ? 'checked' : ''}>
+            <input type="text" class="opt-${idx}" placeholder="選択肢 ${n}">
+          </div>
+        `).join('')}
+      `;
+    } else if (type === 'tf') {
+      area.innerHTML = `
+        <label>正解を選択</label>
+        <div class="option-input-group">
+          <input type="radio" name="correct-${id}" value="0" checked> ⭕ 正しい（TRUE）
+        </div>
+        <div class="option-input-group">
+          <input type="radio" name="correct-${id}" value="1"> ❌ 誤り（FALSE）
+        </div>
+      `;
+    } else if (type === 'text') {
+      area.innerHTML = `
+        <div class="form-group">
+          <label>正解のキーワード（解答時の表記揺れは自動補正されます）</label>
+          <input type="text" class="text-ans" placeholder="例: 富士山">
+        </div>
+      `;
+    }
+  }
+
   function addQuestionBlock() {
     qCount++;
     const container = document.getElementById('questions-container');
@@ -259,53 +327,71 @@
     block.innerHTML = `
       <div class="q-block-header">
         <span class="q-title">問題 ${qCount}</span>
-        ${qCount > 1 ? `<button class="btn-delete" onclick="removeQuestionBlock(${qCount})">削除</button>` : ''}
+        ${qCount > 1 ? `<button class="btn-delete" onclick="document.getElementById('q-block-${qCount}').remove()">削除</button>` : ''}
+      </div>
+      <div class="form-group">
+        <label>出題形式</label>
+        <select id="type-${qCount}" onchange="updateTypeUI(${qCount})">
+          <option value="select">4択形式</option>
+          <option value="tf">〇×（二者択一）形式</option>
+          <option value="text">記述（自由入力）形式</option>
+        </select>
       </div>
       <div class="form-group">
         <label>問題文</label>
-        <input type="text" class="q-text" placeholder="例: 日本で一番高い山は？">
+        <input type="text" class="q-text" placeholder="問題文を入力">
       </div>
+      <div id="input-area-${qCount}" class="form-group"></div>
       <div class="form-group">
-        <label>選択肢（ラジオボタンで正解を指定）</label>
-        ${[1, 2, 3, 4].map((n, idx) => `
-          <div class="option-input-group">
-            <input type="radio" name="correct-opt-${qCount}" value="${idx}" ${idx === 0 ? 'checked' : ''}>
-            <input type="text" class="opt-${idx}" placeholder="選択肢 ${n}">
-          </div>
-        `).join('')}
+        <label>解説 (任意)</label>
+        <input type="text" class="q-exp" placeholder="正解・不正解時に表示する解説">
       </div>
     `;
     container.appendChild(block);
+    updateTypeUI(qCount);
   }
 
-  function removeQuestionBlock(id) {
-    document.getElementById(`q-block-${id}`).remove();
-  }
-
-  // クイズURLの生成
   async function generateQuiz() {
     const blocks = document.querySelectorAll('.q-block');
     const quizList = [];
 
     for (let block of blocks) {
+      const id = block.id.replace('q-block-', '');
+      const type = block.querySelector(`#type-${id}`).value;
       const qText = block.querySelector('.q-text').value.trim();
-      const opts = [
-        block.querySelector('.opt-0').value.trim(),
-        block.querySelector('.opt-1').value.trim(),
-        block.querySelector('.opt-2').value.trim(),
-        block.querySelector('.opt-3').value.trim(),
-      ];
-      const selectedRadio = block.querySelector('input[type="radio"]:checked').value;
-      const ansIndex = parseInt(selectedRadio);
+      const expText = block.querySelector('.q-exp').value.trim();
+      const salt = generateSalt();
 
-      if (!qText || opts.some(o => !o)) {
-        alert('すべての問題文と選択肢を入力してください');
+      if (!qText) {
+        alert('問題文を入力してください');
         return;
       }
 
-      const salt = generateSalt();
-      const ansHash = await sha256(opts[ansIndex] + salt);
-      quizList.push({ q: qText, opts, salt, ansHash });
+      let targetText = '';
+      let opts = [];
+
+      if (type === 'select') {
+        opts = [
+          block.querySelector('.opt-0').value.trim(),
+          block.querySelector('.opt-1').value.trim(),
+          block.querySelector('.opt-2').value.trim(),
+          block.querySelector('.opt-3').value.trim(),
+        ];
+        if (opts.some(o => !o)) { alert('選択肢をすべて入力してください'); return; }
+        const ansIndex = parseInt(block.querySelector(`input[name="correct-${id}"]:checked`).value);
+        targetText = opts[ansIndex];
+      } else if (type === 'tf') {
+        opts = ['⭕ 正しい', '❌ 誤り'];
+        const ansIndex = parseInt(block.querySelector(`input[name="correct-${id}"]:checked`).value);
+        targetText = opts[ansIndex];
+      } else if (type === 'text') {
+        const rawAns = block.querySelector('.text-ans').value.trim();
+        if (!rawAns) { alert('正解のキーワードを入力してください'); return; }
+        targetText = normalizeText(rawAns);
+      }
+
+      const ansHash = await sha256(targetText + salt);
+      quizList.push({ type, q: qText, opts, exp: expText, salt, ansHash });
     }
 
     const encoded = encodeData(quizList);
@@ -324,7 +410,7 @@
     setTimeout(() => { btn.innerText = 'URLをコピー'; btn.style.background = 'var(--primary)'; }, 2000);
   }
 
-  // 回答モード：問題の表示処理
+  // 問題表示
   function loadQuestion(index) {
     const qData = currentQuizData[index];
     document.getElementById('quiz-badge').innerText = `問 ${index + 1} / ${currentQuizData.length}`;
@@ -334,37 +420,68 @@
     const container = document.getElementById('options-container');
     container.innerHTML = '';
     document.getElementById('result-message').innerText = '';
+    
+    const expBox = document.getElementById('explanation-container');
+    expBox.classList.add('hidden');
+    expBox.innerText = '';
+
     document.getElementById('next-btn').classList.add('hidden');
 
-    qData.opts.forEach((opt) => {
-      const btn = document.createElement('button');
-      btn.className = 'quiz-option-btn';
-      btn.innerText = opt;
-      
-      btn.onclick = async () => {
-        const allBtns = container.querySelectorAll('.quiz-option-btn');
-        allBtns.forEach(b => b.disabled = true);
-
-        const userHash = await sha256(opt + qData.salt);
-        const msgArea = document.getElementById('result-message');
-
-        if (userHash === qData.ansHash) {
-          btn.classList.add('correct');
-          msgArea.innerText = '⭕ 正解！';
-          msgArea.style.color = 'var(--success)';
-          score++;
-        } else {
-          btn.classList.add('incorrect');
-          msgArea.innerText = '❌ 不正解...';
-          msgArea.style.color = 'var(--error)';
-        }
-
-        const nextBtn = document.getElementById('next-btn');
-        nextBtn.innerText = (index === currentQuizData.length - 1) ? '結果を見る' : '次の問題へ';
-        nextBtn.classList.remove('hidden');
+    // 選択肢または入力欄の描画
+    if (qData.type === 'select' || qData.type === 'tf') {
+      qData.opts.forEach((opt) => {
+        const btn = document.createElement('button');
+        btn.className = 'quiz-option-btn';
+        btn.innerText = opt;
+        btn.onclick = () => checkAnswer(opt, qData, btn);
+        container.appendChild(btn);
+      });
+    } else if (qData.type === 'text') {
+      container.innerHTML = `
+        <input type="text" id="text-input" placeholder="回答を入力してください" style="margin-bottom: 12px;">
+        <button class="btn" id="submit-text-btn">回答を送信</button>
+      `;
+      document.getElementById('submit-text-btn').onclick = () => {
+        const val = document.getElementById('text-input').value;
+        checkAnswer(normalizeText(val), qData, null);
       };
-      container.appendChild(btn);
-    });
+    }
+  }
+
+  // 解答判定
+  async function checkAnswer(userInput, qData, clickedBtn) {
+    const userHash = await sha256(userInput + qData.salt);
+    const msgArea = document.getElementById('result-message');
+    const isCorrect = (userHash === qData.ansHash);
+
+    // 全ボタン/入力欄の無効化
+    document.querySelectorAll('.quiz-option-btn').forEach(b => b.disabled = true);
+    const textInput = document.getElementById('text-input');
+    if (textInput) textInput.disabled = true;
+    const submitBtn = document.getElementById('submit-text-btn');
+    if (submitBtn) submitBtn.disabled = true;
+
+    if (isCorrect) {
+      if (clickedBtn) clickedBtn.classList.add('correct');
+      msgArea.innerText = '⭕ 正解！';
+      msgArea.style.color = 'var(--success)';
+      score++;
+    } else {
+      if (clickedBtn) clickedBtn.classList.add('incorrect');
+      msgArea.innerText = '❌ 不正解...';
+      msgArea.style.color = 'var(--error)';
+    }
+
+    // 解説表示
+    if (qData.exp) {
+      const expBox = document.getElementById('explanation-container');
+      expBox.innerText = `【解説】 ${qData.exp}`;
+      expBox.classList.remove('hidden');
+    }
+
+    const nextBtn = document.getElementById('next-btn');
+    nextBtn.innerText = (currentQIndex === currentQuizData.length - 1) ? '結果を見る' : '次の問題へ';
+    nextBtn.classList.remove('hidden');
   }
 
   function nextQuestion() {
@@ -398,7 +515,7 @@
         alert('クイズデータの読み込みに失敗しました');
       }
     } else {
-      addQuestionBlock(); // 初期表示で第1問の入力枠を作成
+      addQuestionBlock();
     }
   };
 </script>
