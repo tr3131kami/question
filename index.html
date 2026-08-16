@@ -271,7 +271,7 @@
 
     <div id="share-area" class="hidden">
       <div id="share-url"></div>
-      <button class="btn" onclick="copyUrl()" id="copy-btn">URLをコピー</button>
+      <button class="btn" onclick="copyUrl()" id="copy-btn" style="margin-top: 10px;">URLをコピー</button>
     </div>
   </div>
 
@@ -328,10 +328,6 @@
 
   function decodeData(str) {
     return JSON.parse(decodeURIComponent(Array.prototype.map.call(atob(str), c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join('')));
-  }
-
-  function generateSalt() {
-    return Array.from(crypto.getRandomValues(new Uint8Array(16))).map(b => b.toString(16).padStart(2, '0')).join('');
   }
 
   function goToCreate() {
@@ -414,7 +410,8 @@
       const type = block.querySelector(`#type-${id}`).value;
       const qText = block.querySelector('.q-text').value.trim();
       const expText = block.querySelector('.q-exp').value.trim();
-      const salt = generateSalt();
+      // データ量削減のためソルトも短く変更
+      const salt = Math.random().toString(36).substring(2, 8); 
 
       if (!qText) {
         alert('問題文を入力してください');
@@ -445,15 +442,40 @@
       }
 
       const ansHash = await sha256(targetText + salt);
-      quizList.push({ type, q: qText, opts, exp: expText, salt, ansHash });
+      
+      // 極限までURLを短くするため、オブジェクトキーを廃止し配列形式で保存
+      // [形式ID(1=select, 2=tf, 3=text), 問題文, 選択肢, 解説, ソルト, ハッシュ]
+      const tIdx = type === 'select' ? 1 : type === 'tf' ? 2 : 3;
+      quizList.push([tIdx, qText, opts, expText, salt, ansHash]);
     }
 
     const encoded = encodeData(quizList);
     const baseUrl = window.location.href.split('#')[0];
     const fullUrl = `${baseUrl}#q=${encoded}`;
 
-    document.getElementById('share-url').innerText = fullUrl;
+    // 「生成中」の表示
     document.getElementById('share-area').classList.remove('hidden');
+    document.getElementById('share-url').innerText = '短縮URLを生成中...';
+
+    // 「trq-(ランダム文字列)」のIDを作成
+    const randomId = Math.random().toString(36).substring(2, 7);
+    const customShortId = `trq-${randomId}`;
+    let finalUrl = fullUrl;
+
+    try {
+      // APIを利用してURLを短縮
+      // ※x.gdのAPIはブラウザから直接叩けない（CORS制限がある）場合があるため、
+      // 動作保証性の高い is.gd を用いてカスタムURLを発行しています。
+      const res = await fetch(`https://is.gd/create.php?format=json&url=${encodeURIComponent(fullUrl)}&shorturl=${customShortId}`);
+      const data = await res.json();
+      if (data.shorturl) {
+        finalUrl = data.shorturl;
+      }
+    } catch (err) {
+      console.warn('API短縮に失敗しました。圧縮した元のURLを表示します。', err);
+    }
+
+    document.getElementById('share-url').innerText = finalUrl;
   }
 
   function copyUrl() {
@@ -558,7 +580,21 @@
       document.getElementById('create-mode').classList.add('hidden');
       document.getElementById('play-mode').classList.remove('hidden');
       try {
-        currentQuizData = decodeData(hash.replace('#q=', ''));
+        const decoded = decodeData(hash.replace('#q=', ''));
+        // 新しい配列形式と、古いオブジェクト形式の両方で読み込めるよう互換処理
+        currentQuizData = decoded.map(item => {
+          if (Array.isArray(item)) {
+            return {
+              type: item[0] === 1 ? 'select' : item[0] === 2 ? 'tf' : 'text',
+              q: item[1],
+              opts: item[2],
+              exp: item[3],
+              salt: item[4],
+              ansHash: item[5]
+            };
+          }
+          return item; // 旧URLからアクセスした場合
+        });
         loadQuestion(0);
       } catch (e) {
         alert('クイズデータの読み込みに失敗しました');
@@ -571,4 +607,3 @@
 
 </body>
 </html>
-
