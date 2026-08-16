@@ -303,7 +303,7 @@
     <button class="btn btn-secondary" onclick="goToCreate()">自分もクイズを作る</button>
   </div>
 
-  <footer>© tr0310</footer>
+  <footer>© tr0310 | Version 1.1.0</footer>
 </div>
 
 <script>
@@ -410,7 +410,6 @@
       const type = block.querySelector(`#type-${id}`).value;
       const qText = block.querySelector('.q-text').value.trim();
       const expText = block.querySelector('.q-exp').value.trim();
-      // データ量削減のためソルトも短く変更
       const salt = Math.random().toString(36).substring(2, 8); 
 
       if (!qText) {
@@ -420,6 +419,7 @@
 
       let targetText = '';
       let opts = [];
+      let ansIndex = 0;
 
       if (type === 'select') {
         opts = [
@@ -429,11 +429,11 @@
           block.querySelector('.opt-3').value.trim(),
         ];
         if (opts.some(o => !o)) { alert('選択肢をすべて入力してください'); return; }
-        const ansIndex = parseInt(block.querySelector(`input[name="correct-${id}"]:checked`).value);
+        ansIndex = parseInt(block.querySelector(`input[name="correct-${id}"]:checked`).value);
         targetText = opts[ansIndex];
       } else if (type === 'tf') {
         opts = ['⭕ 正しい', '❌ 誤り'];
-        const ansIndex = parseInt(block.querySelector(`input[name="correct-${id}"]:checked`).value);
+        ansIndex = parseInt(block.querySelector(`input[name="correct-${id}"]:checked`).value);
         targetText = opts[ansIndex];
       } else if (type === 'text') {
         const rawAns = block.querySelector('.text-ans').value.trim();
@@ -443,36 +443,31 @@
 
       const ansHash = await sha256(targetText + salt);
       
-      // 極限までURLを短くするため、オブジェクトキーを廃止し配列形式で保存
-      // [形式ID(1=select, 2=tf, 3=text), 問題文, 選択肢, 解説, ソルト, ハッシュ]
+      // [形式ID(1=select, 2=tf, 3=text), 問題文, 選択肢, 解説, ソルト, ハッシュ, 正解データ(インデックスまたはテキスト)]
       const tIdx = type === 'select' ? 1 : type === 'tf' ? 2 : 3;
-      quizList.push([tIdx, qText, opts, expText, salt, ansHash]);
+      const correctVal = (type === 'text') ? block.querySelector('.text-ans').value.trim() : ansIndex;
+      quizList.push([tIdx, qText, opts, expText, salt, ansHash, correctVal]);
     }
 
     const encoded = encodeData(quizList);
     const baseUrl = window.location.href.split('#')[0];
     const fullUrl = `${baseUrl}#q=${encoded}`;
 
-    // 「生成中」の表示
     document.getElementById('share-area').classList.remove('hidden');
     document.getElementById('share-url').innerText = '短縮URLを生成中...';
 
-    // 「trq-(ランダム文字列)」のIDを作成
     const randomId = Math.random().toString(36).substring(2, 7);
     const customShortId = `trq-${randomId}`;
     let finalUrl = fullUrl;
 
     try {
-      // APIを利用してURLを短縮
-      // ※x.gdのAPIはブラウザから直接叩けない（CORS制限がある）場合があるため、
-      // 動作保証性の高い is.gd を用いてカスタムURLを発行しています。
       const res = await fetch(`https://is.gd/create.php?format=json&url=${encodeURIComponent(fullUrl)}&shorturl=${customShortId}`);
       const data = await res.json();
       if (data.shorturl) {
         finalUrl = data.shorturl;
       }
     } catch (err) {
-      console.warn('API短縮に失敗しました。圧縮した元のURLを表示します。', err);
+      console.warn('API短縮に失敗しました。元のURLを表示します。', err);
     }
 
     document.getElementById('share-url').innerText = finalUrl;
@@ -542,6 +537,16 @@
       if (clickedBtn) clickedBtn.classList.add('incorrect');
       msgArea.innerText = '❌ 不正解...';
       msgArea.style.color = 'var(--error)';
+
+      // 不正解のとき、本来の正解を教える
+      if (qData.type === 'select' || qData.type === 'tf') {
+        const optionButtons = document.querySelectorAll('.quiz-option-btn');
+        if (optionButtons[qData.correctVal]) {
+          optionButtons[qData.correctVal].classList.add('correct');
+        }
+      } else if (qData.type === 'text') {
+        msgArea.innerText += ` （正解: ${qData.correctVal}）`;
+      }
     }
 
     if (qData.exp) {
@@ -581,7 +586,6 @@
       document.getElementById('play-mode').classList.remove('hidden');
       try {
         const decoded = decodeData(hash.replace('#q=', ''));
-        // 新しい配列形式と、古いオブジェクト形式の両方で読み込めるよう互換処理
         currentQuizData = decoded.map(item => {
           if (Array.isArray(item)) {
             return {
@@ -590,10 +594,11 @@
               opts: item[2],
               exp: item[3],
               salt: item[4],
-              ansHash: item[5]
+              ansHash: item[5],
+              correctVal: item[6]
             };
           }
-          return item; // 旧URLからアクセスした場合
+          return item; 
         });
         loadQuestion(0);
       } catch (e) {
