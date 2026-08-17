@@ -490,7 +490,7 @@
     let finalUrl = fullUrl;
     try {
       const res = await fetch(`https://${SERVICE_DOMAIN}.microcms.io/api/v1/${ENDPOINT}`, {
-        method: 'POST', headers: { 'X-MICROCMS-API-KEY': API_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ originalUrl: fullUrl })
+        method: 'POST', headers: { 'X-MICROCMS-API-KEY': uabV6gBgUz08Vl176fPJgcuWl4njm5D7xA4F, 'Content-Type': 'application/json' }, body: JSON.stringify({ originalUrl: fullUrl })
       });
       if (!res.ok) throw new Error('API Error');
       const data = await res.json();
