@@ -3,349 +3,663 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>URL Shortener & Share</title>
-  <!-- QRコード生成ライブラリ (QRCode.js) -->
+  <title>サーバーレス 高機能クイズメーカー v1.7</title>
+  <!-- QRコード生成ライブラリ -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <style>
     :root {
-      --primary: #4f46e5;
-      --primary-hover: #4338ca;
-      --bg: #f8fafc;
+      --primary: #6366f1;
+      --primary-hover: #4f46e5;
+      --bg-gradient: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
       --card-bg: #ffffff;
       --text: #1e293b;
-      --border: #cbd5e1;
+      --text-muted: #64748b;
+      --success: #10b981;
+      --error: #ef4444;
+      --border: #e2e8f0;
+      --warning: #f59e0b;
     }
 
+    * { box-sizing: border-box; transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1); }
+
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background-color: var(--bg);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg-gradient);
       color: var(--text);
-      display: flex;
-      justify-content: center;
-      align-items: center;
       min-height: 100vh;
       margin: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
       padding: 20px;
     }
 
+    .container { width: 100%; max-width: 600px; }
+
     .card {
       background: var(--card-bg);
-      border-radius: 16px;
-      padding: 24px;
-      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
-      width: 100%;
-      max-width: 440px;
-    }
-
-    .form-group {
-      margin-bottom: 16px;
-    }
-
-    label {
-      display: block;
-      font-size: 13px;
-      font-weight: 600;
-      margin-bottom: 6px;
-      color: #64748b;
-    }
-
-    input[type="text"], input[type="password"] {
-      width: 100%;
-      padding: 12px;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      box-sizing: border-box;
-      font-size: 14px;
-      transition: border-color 0.2s;
-    }
-
-    input[type="text"]:focus, input[type="password"]:focus {
-      outline: none;
-      border-color: var(--primary);
-    }
-
-    /* スライドスイッチのデザイン */
-    .switch-container {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
+      border-radius: 20px;
+      padding: 32px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.8);
       margin-bottom: 20px;
-      padding: 12px 16px;
+      animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .header { text-align: center; margin-bottom: 24px; position: relative; }
+    .header h1 { font-size: 1.5rem; margin: 0 0 8px 0; font-weight: 700; }
+    .header p { margin: 0; color: var(--text-muted); font-size: 0.9rem; }
+
+    .nav-btn {
+      position: absolute;
+      right: 0;
+      top: 0;
       background: #f1f5f9;
-      border-radius: 10px;
-    }
-
-    .switch-label {
-      font-size: 14px;
-      font-weight: 500;
-    }
-
-    .switch {
-      position: relative;
-      display: inline-block;
-      width: 46px;
-      height: 24px;
-    }
-
-    .switch input {
-      opacity: 0;
-      width: 0;
-      height: 0;
-    }
-
-    .slider {
-      position: absolute;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 600;
       cursor: pointer;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background-color: #cbd5e1;
-      transition: .3s;
-      border-radius: 24px;
     }
+    .nav-btn:hover { background: #e2e8f0; color: var(--text); transform: translateY(-1px); }
 
-    .slider:before {
-      position: absolute;
-      content: "";
-      height: 18px;
-      width: 18px;
-      left: 3px;
-      bottom: 3px;
-      background-color: white;
-      transition: .3s;
-      border-radius: 50%;
+    .menu-btn {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 24px; background: #f8fafc; border: 2px solid var(--border);
+      border-radius: 16px; margin-bottom: 16px; cursor: pointer; text-decoration: none; color: var(--text);
     }
+    .menu-btn:hover { border-color: var(--primary); background: #f0f3ff; transform: translateY(-3px); }
+    .menu-btn h3 { margin: 0 0 8px 0; color: var(--primary); }
+    .menu-btn p { margin: 0; font-size: 0.85rem; color: var(--text-muted); text-align: center; }
 
-    input:checked + .slider {
-      background-color: var(--primary);
-    }
+    .q-block { background: #f8fafc; border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+    .q-block-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .q-title { font-weight: 700; font-size: 0.95rem; }
 
-    input:checked + .slider:before {
-      transform: translateX(22px);
+    .btn-delete {
+      background: #fee2e2; color: var(--error); border: none; border-radius: 6px;
+      padding: 4px 10px; font-size: 0.8rem; cursor: pointer; font-weight: 600;
     }
+    .btn-delete:hover { background: #fca5a5; transform: scale(1.05); }
 
-    /* ボタンエリア */
-    .action-group {
-      display: flex;
-      gap: 10px;
+    .form-group { margin-bottom: 12px; }
+    label { display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 6px; }
+
+    input[type="text"], input[type="password"], select, textarea {
+      width: 100%; padding: 10px 14px; border: 1.5px solid var(--border);
+      border-radius: 8px; font-size: 0.9rem; outline: none; background: #fff;
     }
+    input:focus, select:focus, textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15); }
+    textarea { resize: vertical; min-height: 100px; font-family: monospace; font-size: 0.85rem; }
+
+    .option-input-group { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .option-input-group input[type="radio"] { width: 18px; height: 18px; accent-color: var(--primary); cursor: pointer; }
 
     .btn {
-      flex: 1;
-      padding: 12px;
-      border: none;
-      border-radius: 8px;
-      font-weight: 600;
-      font-size: 14px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      transition: background-color 0.2s, transform 0.1s;
+      width: 100%; padding: 14px; background: var(--primary); color: white; border: none;
+      border-radius: 12px; font-size: 1rem; font-weight: 600; cursor: pointer;
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2); margin-bottom: 12px;
     }
+    .btn:hover { background: var(--primary-hover); transform: translateY(-2px); box-shadow: 0 6px 16px rgba(99, 102, 241, 0.3); }
+    .btn-secondary { background: #ffffff; color: var(--primary); border: 2px solid var(--primary); box-shadow: none; }
+    .btn-secondary:hover { background: #f0f3ff; }
 
-    .btn:active {
-      transform: scale(0.98);
-    }
+    .password-area { background: #fffbeb; border: 1px solid #fde68a; border-radius: 12px; padding: 16px; margin-bottom: 24px; }
+    .password-area label { color: #d97706; }
+    .password-row { margin-bottom: 12px; }
+    .password-row:last-child { margin-bottom: 0; }
 
-    .btn-qr {
-      background-color: #0284c7;
-      color: white;
-    }
-    .btn-qr:hover { background-color: #0369a1; }
+    .badge { background: #e0e7ff; color: var(--primary); padding: 4px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: 700; display: inline-block; margin-bottom: 12px; }
+    .progress-container { width: 100%; background: var(--border); height: 8px; border-radius: 4px; overflow: hidden; margin-bottom: 20px; }
+    .progress-bar { height: 100%; background: var(--primary); width: 0%; transition: width 0.4s ease; }
 
-    .btn-share {
-      background-color: var(--primary);
-      color: white;
+    .quiz-option-btn {
+      width: 100%; padding: 16px; background: #f8fafc; border: 2px solid var(--border);
+      border-radius: 12px; font-size: 0.95rem; font-weight: 500; text-align: left; margin-bottom: 12px; cursor: pointer;
     }
-    .btn-share:hover { background-color: var(--primary-hover); }
+    .quiz-option-btn.correct { background: #ecfdf5; border-color: var(--success); color: #065f46; font-weight: 700; }
+    .quiz-option-btn.incorrect { background: #fef2f2; border-color: var(--error); color: #991b1b; }
 
-    /* モーダル表示 */
-    .modal-overlay {
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0,0,0,0.5);
-      display: none;
-      justify-content: center;
-      align-items: center;
-      z-index: 1000;
-    }
+    .explanation-box { background: #f1f5f9; border-left: 4px solid var(--primary); padding: 12px 16px; border-radius: 0 8px 8px 0; margin-top: 16px; font-size: 0.9rem; }
+    
+    #share-area { margin-top: 20px; padding: 16px; background: #f8fafc; border-radius: 12px; border: 1px dashed var(--border); }
+    #share-url { word-break: break-all; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px; background: #fff; padding: 12px; border-radius: 8px; border: 1px solid var(--border); }
 
-    .modal-overlay.active {
-      display: flex;
-    }
+    /* スイッチ & ボタングループ (新規追加) */
+    .switch-container { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: #ffffff; border: 1px solid var(--border); border-radius: 10px; margin-bottom: 16px; }
+    .switch-label { font-size: 0.85rem; font-weight: 600; color: var(--text); }
+    .switch { position: relative; display: inline-block; width: 46px; height: 24px; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #cbd5e1; transition: .3s; border-radius: 24px; }
+    .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; }
+    input:checked + .slider { background-color: var(--primary); }
+    input:checked + .slider:before { transform: translateX(22px); }
 
-    .modal {
-      background: white;
-      padding: 24px;
-      border-radius: 16px;
-      text-align: center;
-      max-width: 300px;
-      width: 90%;
-    }
+    .action-group { display: flex; gap: 10px; }
+    .action-group .btn { margin-bottom: 0; padding: 12px; font-size: 0.9rem; flex: 1; display: flex; justify-content: center; align-items: center; gap: 4px; }
+    .btn-qr { background-color: #0284c7 !important; }
+    .btn-qr:hover { background-color: #0369a1 !important; }
 
-    #qrcode {
-      display: flex;
-      justify-content: center;
-      margin: 16px 0;
-    }
+    /* モーダル */
+    .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; z-index: 1000; }
+    .modal-overlay.active { display: flex; }
+    .modal { background: white; padding: 24px; border-radius: 16px; text-align: center; max-width: 300px; width: 90%; animation: fadeInUp 0.3s ease; }
+    #qrcode { display: flex; justify-content: center; margin: 16px 0; }
+    .close-btn { background: #e2e8f0; border: none; padding: 10px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; width: 100%; }
 
-    .close-btn {
-      background: #e2e8f0;
-      border: none;
-      padding: 8px 16px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-weight: 600;
-    }
-
-    /* 通知トースト */
-    .toast {
-      position: fixed;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: #1e293b;
-      color: #fff;
-      padding: 10px 20px;
-      border-radius: 20px;
-      font-size: 13px;
-      display: none;
-      z-index: 1001;
-    }
+    footer { text-align: center; font-size: 0.85rem; color: var(--text-muted); margin-top: 8px; letter-spacing: 0.05em; }
+    .hidden { display: none !important; }
+    .ai-prompt-box { background: #1e293b; color: #f8fafc; padding: 12px; border-radius: 8px; font-size: 0.8rem; font-family: monospace; white-space: pre-wrap; margin-bottom: 12px; }
+    .spinner { display: inline-block; width: 32px; height: 32px; border: 4px solid rgba(99, 102, 241, 0.2); border-left-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
 
-  <div class="card">
-    <div class="form-group">
-      <label for="urlInput">対象URL</label>
-      <input type="text" id="urlInput" value="https://example.com/share/page123" placeholder="https://...">
-    </div>
+<div class="container">
 
-    <div class="form-group">
-      <label for="passInput">パスワード</label>
-      <input type="password" id="passInput" value="pass1234" placeholder="パスワードを入力">
-    </div>
-
-    <!-- パスワードの共有オン/オフ切り替えスイッチ -->
-    <div class="switch-container">
-      <span class="switch-label">パスワードも共有に含める</span>
-      <label class="switch">
-        <input type="checkbox" id="includePassToggle">
-        <span class="slider"></span>
-      </label>
-    </div>
-
-    <!-- QRコード & 共有ボタン -->
-    <div class="action-group">
-      <button class="btn btn-qr" onclick="showQRCode()">
-        <span>QRコード</span>
-      </button>
-      <button class="btn btn-share" onclick="shareUrl()">
-        <span>共有</span>
-      </button>
+  <!-- リダイレクト画面 -->
+  <div id="redirect-screen" class="card hidden" style="text-align: center;">
+    <div class="header">
+      <div class="spinner" style="margin-bottom: 16px;"></div>
+      <h1>リダイレクト中...</h1>
+      <p>microCMSからクイズデータを取得しています</p>
     </div>
   </div>
 
-  <!-- QRコードモーダル -->
-  <div class="modal-overlay" id="qrModal">
-    <div class="modal">
-      <h3 style="margin: 0; font-size: 16px;">短縮QRコード</h3>
-      <div id="qrcode"></div>
-      <p id="qrUrlText" style="font-size: 11px; color: #64748b; word-break: break-all; margin-bottom: 16px;"></p>
-      <button class="close-btn" onclick="closeQRModal()">閉じる</button>
+  <!-- 作成者メニュー -->
+  <div id="creator-menu" class="card">
+    <div class="header">
+      <h1>Quiz Maker</h1>
+      <p>作成者メニュー (v1.7)</p>
+    </div>
+    <div class="menu-btn" onclick="showCreateMode()">
+      <h3>✍️ 手動でクイズを作る</h3>
+    </div>
+    <div class="menu-btn" onclick="showAiImportMode()">
+      <h3>🤖 AI(Gemini)に作ってもらう</h3>
+    </div>
+    <div class="menu-btn" onclick="showManageMode()">
+      <h3>🛠️ 作成済みクイズを管理・編集する</h3>
     </div>
   </div>
 
-  <div class="toast" id="toast">コピーしました！</div>
+  <!-- 管理・編集モード -->
+  <div id="manage-mode" class="card hidden">
+    <div class="header">
+      <button class="nav-btn" onclick="goToMenu()">メニュー</button>
+      <h1>クイズの管理・編集</h1>
+    </div>
+    <div class="form-group">
+      <label>発行したURL（またはハッシュコード）</label>
+      <input type="text" id="manage-url" placeholder="https://...">
+    </div>
+    <div class="form-group">
+      <label>作成者パスワード</label>
+      <input type="password" id="manage-pwd" placeholder="作成時に設定したパスワード">
+    </div>
+    <button class="btn" onclick="loadQuizForEdit()">編集する</button>
+  </div>
 
-  <script>
-    // 短縮URLの生成（疑似短縮処理）
-    function generateShortUrl() {
-      const baseUrl = document.getElementById('urlInput').value.trim();
-      const pass = document.getElementById('passInput').value;
-      const includePass = document.getElementById('includePassToggle').checked;
+  <!-- AIインポートモード -->
+  <div id="ai-import-mode" class="card hidden">
+    <div class="header">
+      <button class="nav-btn" onclick="goToMenu()">メニュー</button>
+      <h1>AI連携インポート</h1>
+    </div>
+    <label>1. 以下の指示文をGeminiに送信してください</label>
+    <div class="ai-prompt-box" id="ai-prompt-text">あなたは優秀なクイズ作成者です。以下のJSONフォーマットのみを出力してください。余計なテキストは不要です。
+[
+  {"type": "select", "q": "問題文", "opts": ["択1", "択2", "択3", "択4"], "ans": 0, "exp": "解説文"},
+  {"type": "tf", "q": "〇×問題文", "ans": 0, "exp": "解説(0が正しい, 1が誤り)"}
+]</div>
+    <button class="btn btn-secondary" onclick="copyPrompt()">📋 コピー</button>
+    <div style="margin-top: 24px;">
+      <label>2. 返ってきたコードを貼り付け</label>
+      <textarea id="ai-json-input" placeholder='[{"type":"select", ...}]'></textarea>
+    </div>
+    <button class="btn" onclick="importAiJson()">取り込む</button>
+  </div>
 
-      if (!baseUrl) return '';
+  <!-- 作成モード -->
+  <div id="create-mode" class="card hidden">
+    <div class="header">
+      <button class="nav-btn" onclick="goToMenu()">メニュー</button>
+      <h1>Quiz Editor</h1>
+    </div>
 
-      // URLをベース64化した一部を用いて擬似的な短縮キーを発行
-      const hash = btoa(encodeURIComponent(baseUrl)).replace(/=/g, '').substring(0, 8);
-      let shortUrl = `https://sho.rt/${hash}`;
+    <div class="password-area">
+      <div class="password-row">
+        <label>🛠️ 編集用(作成者)パスワード（推奨）</label>
+        <input type="password" id="creator-password" placeholder="編集用パスワード">
+      </div>
+      <div class="password-row" style="margin-top: 12px; border-top: 1px dashed #fde68a; padding-top: 12px;">
+        <label>🔒 回答用パスワード（任意）</label>
+        <input type="password" id="player-password" placeholder="遊ぶためのパスワード" oninput="updateShareUrlDisplay()">
+      </div>
+    </div>
 
-      // スライドスイッチがONかつパスワードが存在する場合パラメータを付与
-      if (includePass && pass) {
-        shortUrl += `?pwd=${encodeURIComponent(pass)}`;
-      }
+    <div id="questions-container"></div>
+    <button class="btn btn-secondary" onclick="addQuestionBlock()">＋ 問題を追加する</button>
+    <button class="btn" onclick="generateQuiz()">暗号化してURLを発行する</button>
 
-      return shortUrl;
+    <!-- 共有エリア（アップデート） -->
+    <div id="share-area" class="hidden">
+      <p style="font-size: 0.85rem; font-weight: bold; margin-bottom: 8px;">共有用URL</p>
+      <div id="share-url"></div>
+
+      <div class="switch-container">
+        <span class="switch-label">パスワードも共有に含める(自動入力)</span>
+        <label class="switch">
+          <input type="checkbox" id="includePassToggle" onchange="updateShareUrlDisplay()">
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="action-group">
+        <button class="btn btn-secondary" onclick="copyUrl()" id="copy-btn">コピー</button>
+        <button class="btn btn-qr" onclick="showQRCode()">QRコード</button>
+        <button class="btn" onclick="shareUrl()">共有</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- パスワード入力画面 -->
+  <div id="password-screen" class="card hidden" style="text-align: center;">
+    <div class="header">
+      <h1>🔒 パスワード保護</h1>
+      <p>このクイズを遊ぶにはパスワードが必要です</p>
+    </div>
+    <input type="password" id="play-password" placeholder="パスワードを入力" style="margin-bottom: 16px; text-align: center; font-size: 1.2rem;">
+    <button class="btn" onclick="checkPassword()">クイズを開始する</button>
+    <p id="pwd-error" style="color: var(--error); font-size: 0.85rem; margin-top: 10px;" class="hidden">パスワードが間違っています。</p>
+  </div>
+
+  <!-- 回答モード -->
+  <div id="play-mode" class="card hidden">
+    <div class="header">
+      <button class="nav-btn" onclick="goToMenu()">トップへ</button>
+      <span id="quiz-badge" class="badge">問 1</span>
+      <div class="progress-container"><div id="progress-bar" class="progress-bar"></div></div>
+      <h2 id="quiz-question" style="margin: 0; font-size: 1.3rem;"></h2>
+    </div>
+    <div id="options-container"></div>
+    <div id="result-message" style="text-align: center; font-weight: bold; margin-top: 12px;"></div>
+    <div id="explanation-container" class="explanation-box hidden"></div>
+    <button id="next-btn" class="btn hidden" onclick="nextQuestion()" style="margin-top: 16px;">次の問題へ</button>
+  </div>
+
+  <!-- スコア表示モード -->
+  <div id="score-mode" class="card hidden" style="text-align: center;">
+    <div class="header">
+      <h1>クイズ終了！ 🎉</h1>
+    </div>
+    <div id="score-display" style="font-size: 2.2rem; font-weight: 800; color: var(--primary); margin: 10px 0;"></div>
+    <div id="score-percent" style="font-size: 1.1rem; color: var(--text-muted); margin-bottom: 20px; font-weight: 600;"></div>
+    <button class="btn" onclick="restartQuiz()" style="margin-bottom: 10px;">もう一度挑戦する</button>
+    <button class="btn btn-secondary" onclick="goToMenu()">自分もクイズを作る</button>
+  </div>
+
+  <footer>© tr0310 | Version 1.7.0</footer>
+</div>
+
+<!-- QRコードモーダル -->
+<div class="modal-overlay" id="qrModal">
+  <div class="modal">
+    <h3 style="margin: 0; font-size: 1.1rem; color: var(--text);">共有QRコード</h3>
+    <div id="qrcode"></div>
+    <p id="qrUrlText" style="font-size: 0.75rem; color: var(--text-muted); word-break: break-all; margin-bottom: 16px;"></p>
+    <button class="close-btn" onclick="closeQRModal()">閉じる</button>
+  </div>
+</div>
+
+<script>
+  // --- microCMS 設定項目 ---
+  const SERVICE_DOMAIN = 'url'; // ご自身のmicroCMSサービスドメイン
+  const API_KEY = 'API_KEY';    // APIキー
+  const ENDPOINT = 'short';     // エンドポイント名
+  // ------------------------
+
+  let qCount = 0;
+  let currentQuizData = [];
+  let currentQIndex = 0;
+  let score = 0;
+  let requiredPwdHash = null;
+  let generatedBaseUrl = ''; // 共有URLのベース保持用
+
+  function normalizeText(str) { return str.trim().toLowerCase().replace(/\s+/g, '').replace(/[Ａ-Ｚａ-ｚ０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0)); }
+  async function sha256(msg) {
+    const uint8 = new TextEncoder().encode(msg);
+    const buf = await crypto.subtle.digest('SHA-256', uint8);
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+  function encodeData(data) { return btoa(encodeURIComponent(JSON.stringify(data)).replace(/%([0-9A-F]{2})/g, (m, p1) => String.fromCharCode('0x' + p1))); }
+  function decodeData(str) { return JSON.parse(decodeURIComponent(Array.prototype.map.call(atob(str), c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''))); }
+  function shuffleArray(array) { const arr = [...array]; for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; }
+
+  function hideAll() { ['redirect-screen', 'creator-menu', 'manage-mode', 'ai-import-mode', 'create-mode', 'password-screen', 'play-mode', 'score-mode'].forEach(id => document.getElementById(id).classList.add('hidden')); }
+  function goToMenu() { window.location.href = window.location.pathname; }
+  function showCreateMode() { hideAll(); document.getElementById('create-mode').classList.remove('hidden'); if (qCount === 0) addQuestionBlock(); }
+  function showAiImportMode() { hideAll(); document.getElementById('ai-import-mode').classList.remove('hidden'); }
+  function showManageMode() { hideAll(); document.getElementById('manage-mode').classList.remove('hidden'); }
+
+  // 編集ロジック
+  async function loadQuizForEdit() {
+    let url = document.getElementById('manage-url').value.trim();
+    const pwd = document.getElementById('manage-pwd').value;
+    if (!url) return alert('URLを入力してください');
+
+    if (url.includes('?id=')) {
+      const shortId = new URL(url).searchParams.get('id');
+      try {
+        const res = await fetch(`https://${SERVICE_DOMAIN}.microcms.io/api/v1/${ENDPOINT}/${shortId}`, { headers: { 'X-MICROCMS-API-KEY': API_KEY }});
+        if (res.ok) { const data = await res.json(); url = data.originalUrl; }
+      } catch (err) {}
     }
 
-    // QRコードの表示
-    function showQRCode() {
-      const targetUrl = generateShortUrl();
-      if (!targetUrl) {
-        alert('URLを入力してください');
-        return;
-      }
+    let hashStr = url;
+    if (url.includes('#q=')) hashStr = url.split('#q=')[1];
 
-      const qrContainer = document.getElementById('qrcode');
-      qrContainer.innerHTML = '';
-
-      new QRCode(qrContainer, {
-        text: targetUrl,
-        width: 160,
-        height: 160
-      });
-
-      document.getElementById('qrUrlText').innerText = targetUrl;
-      document.getElementById('qrModal').classList.add('active');
-    }
-
-    function closeQRModal() {
-      document.getElementById('qrModal').classList.remove('active');
-    }
-
-    // 共有処理（Web Share API / クリップボードコピー）
-    async function shareUrl() {
-      const targetUrl = generateShortUrl();
-      if (!targetUrl) {
-        alert('URLを入力してください');
-        return;
-      }
-
-      if (navigator.share) {
-        try {
-          await navigator.share({
-            title: '共有リンク',
-            url: targetUrl
-          });
-        } catch (err) {
-          if (err.name !== 'AbortError') {
-            copyToClipboard(targetUrl);
-          }
+    try {
+      const decoded = decodeData(hashStr);
+      let rawData = [];
+      if (Array.isArray(decoded)) return alert('古い形式のため編集不可です。');
+      if (decoded.v === 2) { alert('古い形式です。パスワードなしで開きます。'); rawData = decoded.d; }
+      if (decoded.v === 3) {
+        rawData = decoded.d;
+        if (decoded.cp) {
+          if (!pwd) return alert('作成者パスワードが必要です。');
+          const inputHash = await sha256(pwd);
+          if (inputHash !== decoded.cp) return alert('パスワードが違います。');
         }
+      }
+      showCreateMode();
+      populateEditor(rawData);
+    } catch (e) { alert('読み込み失敗。URLやデータが壊れています。'); }
+  }
+
+  function populateEditor(data) {
+    document.getElementById('questions-container').innerHTML = ''; qCount = 0;
+    data.forEach(item => {
+      addQuestionBlock();
+      const block = document.getElementById(`q-block-${qCount}`);
+      let type = item[0] === 1 ? 'select' : item[0] === 2 ? 'tf' : 'text';
+      block.querySelector(`#type-${qCount}`).value = type; updateTypeUI(qCount);
+      block.querySelector('.q-text').value = item[1]; block.querySelector('.q-exp').value = item[3];
+      if (type === 'select') {
+        [0,1,2,3].forEach(i => block.querySelector(`.opt-${i}`).value = item[2][i]);
+        const r = block.querySelector(`input[name="correct-${qCount}"][value="${item[6]}"]`); if(r) r.checked = true;
+      } else if (type === 'tf') {
+        const r = block.querySelector(`input[name="correct-${qCount}"][value="${item[6]}"]`); if(r) r.checked = true;
+      } else { block.querySelector('.text-ans').value = item[6]; }
+    });
+    document.getElementById('creator-password').value = ''; document.getElementById('player-password').value = '';
+    alert('読み込みました。再編集後「URLを発行」してください。\n※パスワードは引き継がれません。');
+  }
+
+  // AIインポート
+  function copyPrompt() { navigator.clipboard.writeText(document.getElementById('ai-prompt-text').innerText); alert('コピーしました！'); }
+  function importAiJson() {
+    try {
+      const str = document.getElementById('ai-json-input').value.trim().replace(/```json/g, '').replace(/```/g, '');
+      const aiData = JSON.parse(str);
+      document.getElementById('questions-container').innerHTML = ''; qCount = 0;
+      aiData.forEach(q => {
+        addQuestionBlock();
+        const block = document.getElementById(`q-block-${qCount}`);
+        block.querySelector(`#type-${qCount}`).value = q.type || 'select'; updateTypeUI(qCount);
+        block.querySelector('.q-text').value = q.q || ''; block.querySelector('.q-exp').value = q.exp || '';
+        if (q.type === 'select') {
+          [0,1,2,3].forEach(i => { if(q.opts[i]) block.querySelector(`.opt-${i}`).value = q.opts[i]; });
+          const r = block.querySelector(`input[name="correct-${qCount}"][value="${q.ans}"]`); if(r) r.checked = true;
+        } else if (q.type === 'tf') {
+          const r = block.querySelector(`input[name="correct-${qCount}"][value="${q.ans}"]`); if(r) r.checked = true;
+        } else { block.querySelector('.text-ans').value = q.ans || ''; }
+      });
+      alert('取り込みました！確認してURLを発行してください。'); showCreateMode();
+    } catch (e) { alert('失敗しました。形式を確認してください。'); }
+  }
+
+  function updateTypeUI(id) {
+    const type = document.getElementById(`type-${id}`).value;
+    const area = document.getElementById(`input-area-${id}`);
+    if (type === 'select') {
+      area.innerHTML = `<label>選択肢（ラジオボタンで正解指定）</label>${[1,2,3,4].map((n, i) => `<div class="option-input-group"><input type="radio" name="correct-${id}" value="${i}" ${i===0?'checked':''}><input type="text" class="opt-${i}" placeholder="選択肢 ${n}"></div>`).join('')}`;
+    } else if (type === 'tf') {
+      area.innerHTML = `<label>正解を選択</label><div class="option-input-group"><input type="radio" name="correct-${id}" value="0" checked> ⭕ 正しい</div><div class="option-input-group"><input type="radio" name="correct-${id}" value="1"> ❌ 誤り</div>`;
+    } else {
+      area.innerHTML = `<div class="form-group"><label>正解のキーワード</label><input type="text" class="text-ans" placeholder="例: 富士山"></div>`;
+    }
+  }
+
+  function addQuestionBlock() {
+    qCount++;
+    const container = document.getElementById('questions-container');
+    const block = document.createElement('div'); block.className = 'q-block'; block.id = `q-block-${qCount}`;
+    block.innerHTML = `<div class="q-block-header"><span class="q-title">問題 ${qCount}</span>${qCount>1?`<button class="btn-delete" onclick="document.getElementById('q-block-${qCount}').remove()">削除</button>`:''}</div><div class="form-group"><label>出題形式</label><select id="type-${qCount}" onchange="updateTypeUI(${qCount})"><option value="select">4択</option><option value="tf">〇×</option><option value="text">記述</option></select></div><div class="form-group"><label>問題文</label><input type="text" class="q-text" placeholder="問題文"></div><div id="input-area-${qCount}" class="form-group"></div><div class="form-group"><label>解説 (任意)</label><input type="text" class="q-exp" placeholder="解説"></div>`;
+    container.appendChild(block); updateTypeUI(qCount);
+  }
+
+  // クイズ生成
+  async function generateQuiz() {
+    const blocks = document.querySelectorAll('.q-block');
+    const quizList = [];
+    for (let block of blocks) {
+      const id = block.id.replace('q-block-', '');
+      const type = block.querySelector(`#type-${id}`).value;
+      const qText = block.querySelector('.q-text').value.trim();
+      const expText = block.querySelector('.q-exp').value.trim();
+      const salt = Math.random().toString(36).substring(2, 8); 
+      if (!qText) return alert('問題文を入力してください');
+
+      let tText = '', opts = [], ansIdx = 0;
+      if (type === 'select') {
+        opts = [block.querySelector('.opt-0').value.trim(), block.querySelector('.opt-1').value.trim(), block.querySelector('.opt-2').value.trim(), block.querySelector('.opt-3').value.trim()];
+        if (opts.some(o => !o)) return alert('選択肢を埋めてください');
+        ansIdx = parseInt(block.querySelector(`input[name="correct-${id}"]:checked`).value); tText = opts[ansIdx];
+      } else if (type === 'tf') {
+        opts = ['⭕ 正しい', '❌ 誤り']; ansIdx = parseInt(block.querySelector(`input[name="correct-${id}"]:checked`).value); tText = opts[ansIdx];
       } else {
-        copyToClipboard(targetUrl);
+        const raw = block.querySelector('.text-ans').value.trim();
+        if (!raw) return alert('正解キーワードを入力してください'); tText = normalizeText(raw);
+      }
+      const aHash = await sha256(tText + salt);
+      const cVal = type === 'text' ? block.querySelector('.text-ans').value.trim() : ansIdx;
+      quizList.push([type==='select'?1:type==='tf'?2:3, qText, opts, expText, salt, aHash, cVal]);
+    }
+
+    const rCp = document.getElementById('creator-password').value; const rPp = document.getElementById('player-password').value;
+    const cpHash = rCp ? await sha256(rCp) : null; const ppHash = rPp ? await sha256(rPp) : null;
+
+    const payload = { v: 3, cp: cpHash, pp: ppHash, d: quizList };
+    const encoded = encodeData(payload);
+    const baseUrl = window.location.href.split('#')[0].split('?')[0];
+    const fullUrl = `${baseUrl}#q=${encoded}`;
+
+    document.getElementById('share-area').classList.remove('hidden');
+    document.getElementById('share-url').innerText = 'microCMSで短縮URLを生成中...';
+
+    let finalUrl = fullUrl;
+    try {
+      const res = await fetch(`https://${SERVICE_DOMAIN}.microcms.io/api/v1/${ENDPOINT}`, {
+        method: 'POST', headers: { 'X-MICROCMS-API-KEY': API_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ originalUrl: fullUrl })
+      });
+      if (!res.ok) throw new Error('API Error');
+      const data = await res.json();
+      finalUrl = `${baseUrl}?id=${data.id}`;
+    } catch (err) {}
+
+    generatedBaseUrl = finalUrl;
+    updateShareUrlDisplay();
+  }
+
+  // 共有URLの表示更新（パスワードを含めるかの制御）
+  function updateShareUrlDisplay() {
+    if (!generatedBaseUrl || generatedBaseUrl.includes('生成中')) return;
+    let url = generatedBaseUrl;
+    const includePass = document.getElementById('includePassToggle').checked;
+    const playerPwd = document.getElementById('player-password').value;
+
+    if (includePass && playerPwd) {
+      if (url.includes('?id=')) {
+        url += `&pwd=${encodeURIComponent(playerPwd)}`;
+      } else if (url.includes('#q=')) {
+        const parts = url.split('#');
+        const sep = parts[0].includes('?') ? '&' : '?';
+        url = `${parts[0]}${sep}pwd=${encodeURIComponent(playerPwd)}#${parts[1]}`;
       }
     }
+    document.getElementById('share-url').innerText = url;
+  }
 
-    // クリップボードへのコピー機能
-    function copyToClipboard(text) {
-      navigator.clipboard.writeText(text).then(() => {
-        showToast('短縮URLをコピーしました！');
-      }).catch(() => {
-        alert('コピーに失敗しました');
+  // アクションボタン処理
+  function getDisplayUrl() { return document.getElementById('share-url').innerText; }
+
+  function copyUrl() {
+    const u = getDisplayUrl(); if(!u || u.includes('生成中')) return;
+    navigator.clipboard.writeText(u);
+    const btn = document.getElementById('copy-btn');
+    btn.innerText = 'コピー完了!'; btn.style.background = 'var(--success)'; btn.style.color = '#fff';
+    setTimeout(() => { btn.innerText = 'コピー'; btn.style.background = ''; btn.style.color = ''; }, 2000);
+  }
+
+  function showQRCode() {
+    const u = getDisplayUrl(); if(!u || u.includes('生成中')) return;
+    const qc = document.getElementById('qrcode'); qc.innerHTML = '';
+    new QRCode(qc, { text: u, width: 160, height: 160 });
+    document.getElementById('qrUrlText').innerText = u;
+    document.getElementById('qrModal').classList.add('active');
+  }
+
+  function closeQRModal() { document.getElementById('qrModal').classList.remove('active'); }
+
+  async function shareUrl() {
+    const u = getDisplayUrl(); if(!u || u.includes('生成中')) return;
+    if (navigator.share) {
+      try { await navigator.share({ title: 'クイズに挑戦！', text: 'クイズを作成したよ！挑戦してみてね✨', url: u }); }
+      catch (e) { if(e.name !== 'AbortError') copyUrl(); }
+    } else { copyUrl(); }
+  }
+
+  // クイズ回答ロジック
+  async function checkPassword() {
+    const inputPwd = document.getElementById('play-password').value;
+    const inputHash = await sha256(inputPwd);
+    if (inputHash === requiredPwdHash) {
+      hideAll(); document.getElementById('play-mode').classList.remove('hidden'); loadQuestion(0);
+    } else {
+      document.getElementById('pwd-error').classList.remove('hidden');
+    }
+  }
+
+  function loadQuestion(index) {
+    const qData = currentQuizData[index];
+    document.getElementById('quiz-badge').innerText = `問 ${index + 1} / ${currentQuizData.length}`;
+    document.getElementById('progress-bar').style.width = `${((index + 1) / currentQuizData.length) * 100}%`;
+    document.getElementById('quiz-question').innerText = qData.q;
+    const container = document.getElementById('options-container'); container.innerHTML = '';
+    document.getElementById('result-message').innerText = ''; document.getElementById('explanation-container').classList.add('hidden');
+    document.getElementById('next-btn').classList.add('hidden');
+
+    if (qData.type === 'select' || qData.type === 'tf') {
+      qData.opts.forEach((opt) => {
+        const btn = document.createElement('button'); btn.className = 'quiz-option-btn'; btn.innerText = opt;
+        btn.onclick = () => checkAns(opt, qData, btn); container.appendChild(btn);
       });
+    } else {
+      container.innerHTML = `<input type="text" id="text-input" placeholder="回答を入力" style="margin-bottom: 12px; font-size:1rem; padding:14px;"><button class="btn" id="submit-text-btn">回答を送信</button>`;
+      document.getElementById('submit-text-btn').onclick = () => checkAns(normalizeText(document.getElementById('text-input').value), qData, null);
+    }
+  }
+
+  async function checkAns(input, qData, clickedBtn) {
+    const uHash = await sha256(input + qData.salt); const msg = document.getElementById('result-message');
+    document.querySelectorAll('.quiz-option-btn').forEach(b => b.disabled = true);
+    if(document.getElementById('text-input')) document.getElementById('text-input').disabled = true;
+    if(document.getElementById('submit-text-btn')) document.getElementById('submit-text-btn').disabled = true;
+
+    if (uHash === qData.ansHash) {
+      if(clickedBtn) clickedBtn.classList.add('correct'); msg.innerText = '⭕ 正解！'; msg.style.color = 'var(--success)'; score++;
+    } else {
+      if(clickedBtn) clickedBtn.classList.add('incorrect'); msg.innerText = '❌ 不正解...'; msg.style.color = 'var(--error)';
+      if (qData.type === 'select' || qData.type === 'tf') { const obs = document.querySelectorAll('.quiz-option-btn'); if (obs[qData.correctVal]) obs[qData.correctVal].classList.add('correct'); }
+      else { msg.innerText += ` （正解: ${qData.correctVal}）`; }
+    }
+    if (qData.exp) { const eb = document.getElementById('explanation-container'); eb.innerText = `【解説】 ${qData.exp}`; eb.classList.remove('hidden'); }
+    const nb = document.getElementById('next-btn'); nb.innerText = (currentQIndex === currentQuizData.length - 1) ? '結果を見る' : '次の問題へ'; nb.classList.remove('hidden');
+  }
+
+  function nextQuestion() {
+    currentQIndex++;
+    if (currentQIndex < currentQuizData.length) { loadQuestion(currentQIndex); }
+    else {
+      hideAll(); document.getElementById('score-mode').classList.remove('hidden');
+      document.getElementById('score-display').innerText = `${currentQuizData.length} 問中 ${score} 問正解`;
+      document.getElementById('score-percent').innerText = `正答率: ${Math.round((score / currentQuizData.length) * 100)}%`;
+    }
+  }
+
+  function restartQuiz() { currentQIndex = 0; score = 0; currentQuizData = shuffleArray(currentQuizData); hideAll(); document.getElementById('play-mode').classList.remove('hidden'); loadQuestion(0); }
+
+  // 初期ロード・リダイレクト・オートログイン対応
+  window.onload = async function() {
+    const params = new URLSearchParams(window.location.search);
+    const shortId = params.get('id');
+    const pwdParam = params.get('pwd'); // 自動入力用パスワード
+
+    if (shortId) {
+      hideAll(); document.getElementById('redirect-screen').classList.remove('hidden');
+      try {
+        const res = await fetch(`https://${SERVICE_DOMAIN}.microcms.io/api/v1/${ENDPOINT}/${shortId}`, { headers: { 'X-MICROCMS-API-KEY': API_KEY } });
+        if (!res.ok) throw new Error('短縮URLが見つかりません');
+        const data = await res.json();
+        if (data.originalUrl) {
+          let redir = data.originalUrl;
+          if (pwdParam) {
+            const p = redir.split('#'); const sep = p[0].includes('?') ? '&' : '?';
+            redir = `${p[0]}${sep}pwd=${encodeURIComponent(pwdParam)}${p[1] ? '#'+p[1] : ''}`;
+          }
+          window.location.replace(redir); return;
+        } else throw new Error('URL未登録');
+      } catch (err) { alert(err.message); goToMenu(); return; }
     }
 
-    function showToast(msg) {
-      const toast = document.getElementById('toast');
-      toast.innerText = msg;
-      toast.style.display = 'block';
-      setTimeout(() => {
-        toast.style.display = 'none';
-      }, 2000);
+    const hash = window.location.hash;
+    if (hash && hash.startsWith('#q=')) {
+      hideAll();
+      try {
+        const decoded = decodeData(hash.replace('#q=', ''));
+        let raw = [];
+        if (Array.isArray(decoded)) { raw = decoded; requiredPwdHash = null; }
+        else if (decoded.v === 2) { raw = decoded.d; requiredPwdHash = decoded.p; }
+        else if (decoded.v === 3) { raw = decoded.d; requiredPwdHash = decoded.pp; }
+
+        currentQuizData = shuffleArray(raw.map(i => Array.isArray(i) ? { type: i[0]===1?'select':i[0]===2?'tf':'text', q: i[1], opts: i[2], exp: i[3], salt: i[4], ansHash: i[5], correctVal: i[6] } : i));
+
+        if (requiredPwdHash) {
+          document.getElementById('password-screen').classList.remove('hidden');
+          // URLにパスワードがあれば自動入力してログイン試行
+          if (pwdParam) {
+            document.getElementById('play-password').value = pwdParam;
+            checkPassword();
+          }
+        } else {
+          document.getElementById('play-mode').classList.remove('hidden'); loadQuestion(0);
+        }
+      } catch (e) { alert('データ読込エラー'); goToMenu(); }
+    } else {
+      hideAll(); document.getElementById('creator-menu').classList.remove('hidden');
     }
-  </script>
+  };
+</script>
+
 </body>
 </html>
