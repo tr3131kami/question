@@ -15,6 +15,7 @@
       --success: #10b981;
       --error: #ef4444;
       --border: #e2e8f0;
+      --twitter: #000000;
     }
 
     * { box-sizing: border-box; transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1); }
@@ -70,7 +71,6 @@
       border-radius: 12px;
       padding: 20px;
       margin-bottom: 20px;
-      animation: popIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
     .q-block-header {
@@ -144,6 +144,19 @@
       margin-bottom: 16px;
     }
     .btn-secondary:hover { background: #f0f3ff; }
+
+    .btn-twitter {
+      background: var(--twitter);
+      color: white;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      text-decoration: none;
+    }
+    .btn-twitter:hover { background: #333333; transform: translateY(-2px); color: white; }
 
     /* 解答UI */
     .badge {
@@ -264,13 +277,18 @@
       <h1>クイズ終了！ 🎉</h1>
       <p>あなたの回答結果</p>
     </div>
-    <div id="score-display" style="font-size: 2.5rem; font-weight: 800; color: var(--primary); margin: 20px 0;"></div>
+    <div id="score-display" style="font-size: 2.2rem; font-weight: 800; color: var(--primary); margin: 10px 0;"></div>
+    <div id="score-percent" style="font-size: 1.1rem; color: var(--text-muted); margin-bottom: 20px; font-weight: 600;"></div>
+    
+    <a id="twitter-share-btn" class="btn btn-twitter" href="#" target="_blank" rel="noopener noreferrer">
+      𝕏 結果をポストしてシェア
+    </a>
     
     <button class="btn" onclick="restartQuiz()" style="margin-bottom: 10px;">もう一度挑戦する</button>
     <button class="btn btn-secondary" onclick="goToCreate()">自分もクイズを作る</button>
   </div>
 
-  <footer>© tr0310 | Version 1.3.0</footer>
+  <footer>© tr0310 | Version 1.4.0</footer>
 </div>
 
 <script>
@@ -295,6 +313,16 @@
 
   function decodeData(str) {
     return JSON.parse(decodeURIComponent(Array.prototype.map.call(atob(str), c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join('')));
+  }
+
+  // 配列をシャッフルする関数（Fisher-Yatesアルゴリズム）
+  function shuffleArray(array) {
+    const arr = [...array];
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
   }
 
   function goToCreate() {
@@ -531,13 +559,24 @@
     } else {
       document.getElementById('play-mode').classList.add('hidden');
       document.getElementById('score-mode').classList.remove('hidden');
-      document.getElementById('score-display').innerText = `${currentQuizData.length} 問中 ${score} 問正解`;
+      
+      const total = currentQuizData.length;
+      const percent = Math.round((score / total) * 100);
+      document.getElementById('score-display').innerText = `${total} 問中 ${score} 問正解`;
+      document.getElementById('score-percent').innerText = `正答率: ${percent}%`;
+
+      // X（Twitter）シェア用リンクの生成
+      const shareText = encodeURIComponent(`クイズに挑戦しました！\n結果：${total}問中 ${score}問正解（正答率 ${percent}%）\n\n#サーバーレスクイズメーカー`);
+      const shareUrl = `https://twitter.com/intent/tweet?text=${shareText}&url=${encodeURIComponent(window.location.href)}`;
+      document.getElementById('twitter-share-btn').href = shareUrl;
     }
   }
 
   function restartQuiz() {
     currentQIndex = 0;
     score = 0;
+    // リトライ時にも問題をシャッフルし直す
+    currentQuizData = shuffleArray(currentQuizData);
     document.getElementById('score-mode').classList.add('hidden');
     document.getElementById('play-mode').classList.remove('hidden');
     loadQuestion(0);
@@ -550,7 +589,7 @@
       document.getElementById('play-mode').classList.remove('hidden');
       try {
         const decoded = decodeData(hash.replace('#q=', ''));
-        currentQuizData = decoded.map(item => {
+        const rawData = decoded.map(item => {
           if (Array.isArray(item)) {
             return {
               type: item[0] === 1 ? 'select' : item[0] === 2 ? 'tf' : 'text',
@@ -564,6 +603,8 @@
           }
           return item; 
         });
+        // 読み込み時に問題をシャッフルする
+        currentQuizData = shuffleArray(rawData);
         loadQuestion(0);
       } catch (e) {
         alert('クイズデータの読み込みに失敗しました');
