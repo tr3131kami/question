@@ -170,11 +170,32 @@
       background: #1e293b; color: #f8fafc; padding: 12px; border-radius: 8px;
       font-size: 0.8rem; font-family: monospace; white-space: pre-wrap; margin-bottom: 12px;
     }
+
+    /* ローディングスピナー */
+    .spinner {
+      display: inline-block;
+      width: 32px;
+      height: 32px;
+      border: 4px solid rgba(99, 102, 241, 0.2);
+      border-left-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
 
 <div class="container">
+
+  <!-- リダイレクト処理中画面 -->
+  <div id="redirect-screen" class="card hidden" style="text-align: center;">
+    <div class="header">
+      <div class="spinner" style="margin-bottom: 16px;"></div>
+      <h1>リダイレクト中...</h1>
+      <p>microCMSからクイズデータを取得しています</p>
+    </div>
+  </div>
 
   <!-- 作成者メニュー（ホーム） -->
   <div id="creator-menu" class="card">
@@ -205,7 +226,7 @@
     </div>
     <div class="form-group">
       <label>発行したURL（またはハッシュコード）</label>
-      <input type="text" id="manage-url" placeholder="https://...#q=...">
+      <input type="text" id="manage-url" placeholder="https://...#q=... または短縮URL">
     </div>
     <div class="form-group">
       <label>作成者パスワード</label>
@@ -326,11 +347,17 @@
 </div>
 
 <script>
+  // --- microCMS 設定項目 ---
+  const SERVICE_DOMAIN = 'url'; // ご自身のmicroCMSサービスドメイン
+  const API_KEY = 'API_KEY';    // GET / POST 権限を持つAPIキー
+  const ENDPOINT = 'short';     // APIのエンドポイント名
+  // ------------------------
+
   let qCount = 0;
   let currentQuizData = [];
   let currentQIndex = 0;
   let score = 0;
-  let requiredPwdHash = null; // 回答者用パスワードハッシュ
+  let requiredPwdHash = null;
 
   // --- ユーティリティ関数 ---
   function normalizeText(str) {
@@ -362,13 +389,13 @@
 
   // --- 画面遷移管理 ---
   function hideAll() {
-    ['creator-menu', 'manage-mode', 'ai-import-mode', 'create-mode', 'password-screen', 'play-mode', 'score-mode'].forEach(id => {
+    ['redirect-screen', 'creator-menu', 'manage-mode', 'ai-import-mode', 'create-mode', 'password-screen', 'play-mode', 'score-mode'].forEach(id => {
       document.getElementById(id).classList.add('hidden');
     });
   }
 
   function goToMenu() {
-    window.location.href = window.location.pathname; // URLハッシュを消してリロード
+    window.location.href = window.location.pathname;
   }
 
   function showCreateMode() {
@@ -394,6 +421,22 @@
 
     if (!url) { alert('URLまたはデータ文字列を入力してください'); return; }
 
+    // microCMS短縮URLの場合の処理
+    if (url.includes('?id=')) {
+      const shortId = new URL(url).searchParams.get('id');
+      try {
+        const res = await fetch(`https://${SERVICE_DOMAIN}.microcms.io/api/v1/${ENDPOINT}/${shortId}`, {
+          headers: { 'X-MICROCMS-API-KEY': API_KEY }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          url = data.originalUrl;
+        }
+      } catch (err) {
+        console.warn('microCMSからの復元に失敗しました', err);
+      }
+    }
+
     let hashStr = url;
     if (url.includes('#q=')) {
       hashStr = url.split('#q=')[1];
@@ -404,7 +447,6 @@
       let rawData = [];
       let cpHash = null;
 
-      // バージョン互換性チェック
       if (Array.isArray(decoded)) {
         alert('このクイズは古い形式(v1)のため、編集機能に対応していません。'); return;
       } else if (decoded.v === 2) {
@@ -414,7 +456,6 @@
         rawData = decoded.d;
         cpHash = decoded.cp;
         
-        // パスワード照合
         if (cpHash) {
           if (!pwd) { alert('このクイズの編集には作成者パスワードが必要です。'); return; }
           const inputHash = await sha256(pwd);
@@ -441,7 +482,7 @@
       
       let type = item[0] === 1 ? 'select' : item[0] === 2 ? 'tf' : 'text';
       block.querySelector(`#type-${qCount}`).value = type;
-      updateTypeUI(qCount); // UIを更新
+      updateTypeUI(qCount);
       
       block.querySelector('.q-text').value = item[1];
       block.querySelector('.q-exp').value = item[3];
@@ -461,7 +502,6 @@
       }
     });
 
-    // ハッシュから元のパスワードは復元できないため空にする
     document.getElementById('creator-password').value = '';
     document.getElementById('player-password').value = '';
     
@@ -572,7 +612,7 @@
     updateTypeUI(qCount);
   }
 
-  // --- クイズ生成（暗号化） ---
+  // --- クイズ生成（暗号化＋microCMS短縮URL作成） ---
   async function generateQuiz() {
     const blocks = document.querySelectorAll('.q-block');
     const quizList = [];
@@ -612,31 +652,40 @@
       quizList.push([tIdx, qText, opts, expText, salt, ansHash, correctVal]);
     }
 
-    // 各種パスワードの処理
     const rawCp = document.getElementById('creator-password').value;
     const rawPp = document.getElementById('player-password').value;
     let cpHash = rawCp ? await sha256(rawCp) : null;
     let ppHash = rawPp ? await sha256(rawPp) : null;
 
-    // 新フォーマット { v: 3, cp: 作成者パスワード, pp: 回答者パスワード, d: 問題データ配列 }
     const payload = { v: 3, cp: cpHash, pp: ppHash, d: quizList };
     const encoded = encodeData(payload);
 
-    const baseUrl = window.location.href.split('#')[0];
+    const baseUrl = window.location.href.split('#')[0].split('?')[0];
     const fullUrl = `${baseUrl}#q=${encoded}`;
 
     document.getElementById('share-area').classList.remove('hidden');
-    document.getElementById('share-url').innerText = '短縮URLを生成中...';
+    document.getElementById('share-url').innerText = 'microCMSで短縮URLを生成中...';
 
-    const customShortId = `trq-${Math.random().toString(36).substring(2, 7)}`;
     let finalUrl = fullUrl;
 
     try {
-      const res = await fetch(`https://is.gd/create.php?format=json&url=${encodeURIComponent(fullUrl)}&shorturl=${customShortId}`);
-      const data = await res.json();
-      if (data.shorturl) finalUrl = data.shorturl;
+      const response = await fetch(`https://${SERVICE_DOMAIN}.microcms.io/api/v1/${ENDPOINT}`, {
+        method: 'POST',
+        headers: {
+          'X-MICROCMS-API-KEY': API_KEY,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ originalUrl: fullUrl })
+      });
+
+      if (!response.ok) {
+        throw new Error('microCMS API Error');
+      }
+
+      const data = await response.json();
+      finalUrl = `${baseUrl}?id=${data.id}`;
     } catch (err) {
-      console.warn('API短縮に失敗しました。元のURLを表示します。');
+      console.warn('microCMSでの短縮URL作成に失敗したため、元のURLを表示します。', err);
     }
 
     document.getElementById('share-url').innerText = finalUrl;
@@ -762,8 +811,37 @@
     loadQuestion(0);
   }
 
-  // --- 初期読み込みロジック ---
-  window.onload = function() {
+  // --- 初期読み込みロジック (microCMSからのリダイレクト対応) ---
+  window.onload = async function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const shortId = urlParams.get('id');
+
+    // 1. ?id=xxx パラメータがある場合はmicroCMSから転送先URLを取得
+    if (shortId) {
+      hideAll();
+      document.getElementById('redirect-screen').classList.remove('hidden');
+      try {
+        const response = await fetch(`https://${SERVICE_DOMAIN}.microcms.io/api/v1/${ENDPOINT}/${shortId}`, {
+          headers: { 'X-MICROCMS-API-KEY': API_KEY }
+        });
+
+        if (!response.ok) throw new Error('指定された短縮URLは見つからないか削除されています。');
+
+        const data = await response.json();
+        if (data.originalUrl) {
+          window.location.replace(data.originalUrl);
+          return;
+        } else {
+          throw new Error('転送先URLが登録されていません。');
+        }
+      } catch (err) {
+        alert(err.message || '短縮URLの解析に失敗しました。');
+        goToMenu();
+        return;
+      }
+    }
+
+    // 2. #q=xxx パラメータがある場合は通常のクイズ復元処理
     const hash = window.location.hash;
     if (hash && hash.startsWith('#q=')) {
       hideAll();
@@ -771,16 +849,15 @@
         const decoded = decodeData(hash.replace('#q=', ''));
         let rawData = [];
 
-        // v1, v2, v3のフォーマット互換性チェック
         if (Array.isArray(decoded)) {
           rawData = decoded;
           requiredPwdHash = null;
         } else if (decoded.v === 2) {
           rawData = decoded.d;
-          requiredPwdHash = decoded.p; // v2のプレイヤー用パスワード
+          requiredPwdHash = decoded.p;
         } else if (decoded.v === 3) {
           rawData = decoded.d;
-          requiredPwdHash = decoded.pp; // v3のプレイヤー用パスワード
+          requiredPwdHash = decoded.pp;
         }
 
         const parsedData = rawData.map(item => {
