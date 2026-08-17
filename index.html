@@ -15,9 +15,6 @@
       --success: #10b981;
       --error: #ef4444;
       --border: #e2e8f0;
-      --gold: #f59e0b;
-      --silver: #94a3b8;
-      --bronze: #d97706;
     }
 
     * { box-sizing: border-box; transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1); }
@@ -203,33 +200,6 @@
       font-size: 0.9rem;
     }
 
-    /* ランキングUI */
-    .ranking-list {
-      margin-top: 16px;
-      max-height: 250px;
-      overflow-y: auto;
-      text-align: left;
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      background: #f8fafc;
-      padding: 8px;
-    }
-    .ranking-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 10px 14px;
-      border-bottom: 1px solid var(--border);
-      font-size: 0.9rem;
-    }
-    .ranking-item:last-child { border-bottom: none; }
-    .rank-num { font-weight: 800; width: 28px; text-align: center; }
-    .rank-1 { color: var(--gold); }
-    .rank-2 { color: var(--silver); }
-    .rank-3 { color: var(--bronze); }
-    .rank-name { flex-grow: 1; margin-left: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .rank-score { font-weight: 700; color: var(--primary); }
-
     #share-area {
       margin-top: 20px;
       padding: 16px;
@@ -288,30 +258,19 @@
     <button id="next-btn" class="btn hidden" onclick="nextQuestion()" style="margin-top: 16px;">次の問題へ</button>
   </div>
 
-  <!-- スコア表示モード & ランキング -->
+  <!-- スコア表示モード -->
   <div id="score-mode" class="card hidden" style="text-align: center;">
     <div class="header">
       <h1>クイズ終了！ 🎉</h1>
       <p>あなたの回答結果</p>
     </div>
-    <div id="score-display" style="font-size: 2.2rem; font-weight: 800; color: var(--primary); margin: 10px 0;"></div>
+    <div id="score-display" style="font-size: 2.5rem; font-weight: 800; color: var(--primary); margin: 20px 0;"></div>
     
-    <div class="form-group" style="text-align: left; margin-top: 16px;">
-      <label>ランキングに登録する名前</label>
-      <input type="text" id="ranking-name" placeholder="あなたの名前（例: たろう）" maxlength="15">
-    </div>
-    <button class="btn" onclick="submitScore()" id="submit-score-btn" style="margin-bottom: 16px;">ランキングにスコアを送信</button>
-
-    <h3 style="margin: 16px 0 8px 0; font-size: 1.1rem;">🏆 みんなのランキング</h3>
-    <div id="ranking-container" class="ranking-list">
-      <div style="text-align: center; color: var(--text-muted); padding: 12px;">読み込み中...</div>
-    </div>
-    
-    <button class="btn btn-secondary" onclick="restartQuiz()" style="margin-top: 20px;">もう一度挑戦する</button>
-    <button class="btn" onclick="goToCreate()">自分もクイズを作る</button>
+    <button class="btn" onclick="restartQuiz()" style="margin-bottom: 10px;">もう一度挑戦する</button>
+    <button class="btn btn-secondary" onclick="goToCreate()">自分もクイズを作る</button>
   </div>
 
-  <footer>© tr0310 | Version 1.2.1</footer>
+  <footer>© tr0310 | Version 1.3.0</footer>
 </div>
 
 <script>
@@ -319,7 +278,6 @@
   let currentQuizData = [];
   let currentQIndex = 0;
   let score = 0;
-  let quizId = "";
 
   function normalizeText(str) {
     return str.trim().toLowerCase().replace(/\s+/g, '').replace(/[Ａ-Ｚａ-ｚ０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
@@ -457,9 +415,6 @@
     }
 
     const encoded = encodeData(quizList);
-    const hashId = await sha256(encoded);
-    quizId = hashId.substring(0, 10);
-
     const baseUrl = window.location.href.split('#')[0];
     const fullUrl = `${baseUrl}#q=${encoded}`;
 
@@ -571,76 +526,13 @@
 
   function nextQuestion() {
     currentQIndex++;
-    if (currentQIndex < currentQuizData.index < currentQuizData.length || currentQIndex < currentQuizData.length) {
-      if (currentQIndex < currentQuizData.length) {
-        loadQuestion(currentQIndex);
-        return;
-      }
+    if (currentQIndex < currentQuizData.length) {
+      loadQuestion(currentQIndex);
+    } else {
+      document.getElementById('play-mode').classList.add('hidden');
+      document.getElementById('score-mode').classList.remove('hidden');
+      document.getElementById('score-display').innerText = `${currentQuizData.length} 問中 ${score} 問正解`;
     }
-    
-    // クイズ終了時の処理
-    document.getElementById('play-mode').classList.add('hidden');
-    document.getElementById('score-mode').classList.remove('hidden');
-    document.getElementById('score-display').innerText = `${currentQuizData.length} 問中 ${score} 問正解`;
-    fetchRanking();
-  }
-
-  function fetchRanking() {
-    const rankings = JSON.parse(localStorage.getItem('rank_' + quizId) || '[]');
-    renderRanking(rankings);
-  }
-
-  function submitScore() {
-    const nameInput = document.getElementById('ranking-name').value.trim() || '名無しさん';
-    const btn = document.getElementById('submit-score-btn');
-    
-    let rankings = JSON.parse(localStorage.getItem('rank_' + quizId) || '[]');
-    rankings.push({ name: nameInput, score: score, max: currentQuizData.length, date: new Date().toLocaleDateString() });
-    rankings.sort((a, b) => b.score - a.score);
-    rankings = rankings.slice(0, 10); // 上位10件
-    localStorage.setItem('rank_' + quizId, JSON.stringify(rankings));
-
-    btn.innerText = '送信完了！';
-    btn.disabled = true;
-    btn.style.background = 'var(--success)';
-    
-    renderRanking(rankings);
-  }
-
-  function renderRanking(rankings) {
-    const container = document.getElementById('ranking-container');
-    if (rankings.length === 0) {
-      container.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 12px;">まだスコアがありません。最初の挑戦者になろう！</div>';
-      return;
-    }
-    
-    // 同じ得点の人は「同じ順位（同順位）」になるように修正
-    container.innerHTML = rankings.map((r, i, arr) => {
-      let rank = i + 1;
-      // 1つ前の人と得点が同じなら、同じ順位にする
-      if (i > 0 && r.score === arr[i - 1].score) {
-        // 直前の人の表示上の順位を取得（タイ表示）
-        // 簡単のため、インデックスを基準に同じ順位番号を割り振るロジック
-        let prevIdx = i;
-        while (prevIdx > 0 && arr[prevIdx].score === arr[prevIdx - 1].score) {
-          prevIdx--;
-        }
-        rank = prevIdx + 1;
-      }
-
-      const rankClass = rank === 1 ? 'rank-1' : rank === 2 ? 'rank-2' : rank === 3 ? 'rank-3' : '';
-      return `
-        <div class="ranking-item">
-          <span class="rank-num ${rankClass}">${rank}</span>
-          <span class="rank-name" title="${escapeHtml(r.name)}">${escapeHtml(r.name)}</span>
-          <span class="rank-score">${r.score} / ${r.max} 問正解</span>
-        </div>
-      `;
-    }).join('');
-  }
-
-  function escapeHtml(str) {
-    return str.replace(/[&'`<>"]/g, match => ({ '&': '&amp;', "'": '&#x27;', '`': '&#x60;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[match]));
   }
 
   function restartQuiz() {
@@ -648,12 +540,6 @@
     score = 0;
     document.getElementById('score-mode').classList.add('hidden');
     document.getElementById('play-mode').classList.remove('hidden');
-    
-    const btn = document.getElementById('submit-score-btn');
-    btn.innerText = 'ランキングにスコアを送信';
-    btn.disabled = false;
-    btn.style.background = 'var(--primary)';
-    
     loadQuestion(0);
   }
 
@@ -663,9 +549,7 @@
       document.getElementById('create-mode').classList.add('hidden');
       document.getElementById('play-mode').classList.remove('hidden');
       try {
-        const encodedDataStr = hash.replace('#q=', '');
-        quizId = encodedDataStr.substring(0, 10);
-        const decoded = decodeData(encodedDataStr);
+        const decoded = decodeData(hash.replace('#q=', ''));
         currentQuizData = decoded.map(item => {
           if (Array.isArray(item)) {
             return {
