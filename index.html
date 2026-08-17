@@ -223,7 +223,7 @@
       font-size: 0.9rem;
     }
     .ranking-item:last-child { border-bottom: none; }
-    .rank-num { font-weight: 800; width: 24px; text-align: center; }
+    .rank-num { font-weight: 800; width: 28px; text-align: center; }
     .rank-1 { color: var(--gold); }
     .rank-2 { color: var(--silver); }
     .rank-3 { color: var(--bronze); }
@@ -311,7 +311,7 @@
     <button class="btn" onclick="goToCreate()">自分もクイズを作る</button>
   </div>
 
-  <footer>© tr0310 | Version 1.2.0</footer>
+  <footer>© tr0310 | Version 1.2.1</footer>
 </div>
 
 <script>
@@ -457,7 +457,6 @@
     }
 
     const encoded = encodeData(quizList);
-    // クイズ固有のIDをハッシュから簡易生成（ランキングの識別用）
     const hashId = await sha256(encoded);
     quizId = hashId.substring(0, 10);
 
@@ -572,39 +571,29 @@
 
   function nextQuestion() {
     currentQIndex++;
-    if (currentQIndex < currentQuizData.length) {
-      loadQuestion(currentQIndex);
-    } else {
-      document.getElementById('play-mode').classList.add('hidden');
-      document.getElementById('score-mode').classList.remove('hidden');
-      document.getElementById('score-display').innerText = `${currentQuizData.length} 問中 ${score} 問正解`;
-      fetchRanking();
+    if (currentQIndex < currentQuizData.index < currentQuizData.length || currentQIndex < currentQuizData.length) {
+      if (currentQIndex < currentQuizData.length) {
+        loadQuestion(currentQIndex);
+        return;
+      }
     }
-  }
-
-  async function fetchRanking() {
-    const container = document.getElementById('ranking-container');
-    container.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 12px;">ランキングを読み込み中...</div>';
     
-    try {
-      // 簡易公開JSONストレージを利用してスコアを同期
-      const res = await fetch(`https://api.jsonbin.io/v3/b/66bc42cce41b4d34e4210a56/latest`, {
-        headers: { 'X-Master-Key': '$2a$10$YourMockKeyForDemoPurposeOnly' } // ダミー動作またはパブリックアクセス可能なエンドポイント
-      });
-      // ※より確実な完全無料パブリックストレージ（npoint.io等）に切り替え可能
-      renderRanking([]);
-    } catch(e) {
-      // ローカルストレージフォールバック（デモ・テスト用）
-      const mockRankings = JSON.parse(localStorage.getItem('rank_' + quizId) || '[]');
-      renderRanking(mockRankings);
-    }
+    // クイズ終了時の処理
+    document.getElementById('play-mode').classList.add('hidden');
+    document.getElementById('score-mode').classList.remove('hidden');
+    document.getElementById('score-display').innerText = `${currentQuizData.length} 問中 ${score} 問正解`;
+    fetchRanking();
   }
 
-  async function submitScore() {
+  function fetchRanking() {
+    const rankings = JSON.parse(localStorage.getItem('rank_' + quizId) || '[]');
+    renderRanking(rankings);
+  }
+
+  function submitScore() {
     const nameInput = document.getElementById('ranking-name').value.trim() || '名無しさん';
     const btn = document.getElementById('submit-score-btn');
     
-    // ローカルストレージベースのランキング保存（実運用ではここに無料APIストレージを紐付け可能）
     let rankings = JSON.parse(localStorage.getItem('rank_' + quizId) || '[]');
     rankings.push({ name: nameInput, score: score, max: currentQuizData.length, date: new Date().toLocaleDateString() });
     rankings.sort((a, b) => b.score - a.score);
@@ -625,13 +614,29 @@
       return;
     }
     
-    container.innerHTML = rankings.map((r, i) => `
-      <div class="ranking-item">
-        <span class="rank-num ${i === 0 ? 'rank-1' : i === 1 ? 'rank-2' : i === 2 ? 'rank-3' : ''}">${i + 1}</span>
-        <span class="rank-name" title="${escapeHtml(r.name)}">${escapeHtml(r.name)}</span>
-        <span class="rank-score">${r.score} / ${r.max} 問正解</span>
-      </div>
-    `).join('');
+    // 同じ得点の人は「同じ順位（同順位）」になるように修正
+    container.innerHTML = rankings.map((r, i, arr) => {
+      let rank = i + 1;
+      // 1つ前の人と得点が同じなら、同じ順位にする
+      if (i > 0 && r.score === arr[i - 1].score) {
+        // 直前の人の表示上の順位を取得（タイ表示）
+        // 簡単のため、インデックスを基準に同じ順位番号を割り振るロジック
+        let prevIdx = i;
+        while (prevIdx > 0 && arr[prevIdx].score === arr[prevIdx - 1].score) {
+          prevIdx--;
+        }
+        rank = prevIdx + 1;
+      }
+
+      const rankClass = rank === 1 ? 'rank-1' : rank === 2 ? 'rank-2' : rank === 3 ? 'rank-3' : '';
+      return `
+        <div class="ranking-item">
+          <span class="rank-num ${rankClass}">${rank}</span>
+          <span class="rank-name" title="${escapeHtml(r.name)}">${escapeHtml(r.name)}</span>
+          <span class="rank-score">${r.score} / ${r.max} 問正解</span>
+        </div>
+      `;
+    }).join('');
   }
 
   function escapeHtml(str) {
@@ -687,4 +692,3 @@
 
 </body>
 </html>
-
