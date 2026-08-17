@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>サーバーレス 高機能クイズメーカー</title>
+  <title>サーバーレス 高機能クイズメーカー v1.5</title>
   <style>
     :root {
       --primary: #6366f1;
@@ -64,6 +64,25 @@
     }
     .nav-btn:hover { background: #e2e8f0; color: var(--text); transform: translateY(-1px); }
 
+    /* メニュー画面用 */
+    .menu-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: #f8fafc;
+      border: 2px solid var(--border);
+      border-radius: 16px;
+      margin-bottom: 16px;
+      cursor: pointer;
+      text-decoration: none;
+      color: var(--text);
+    }
+    .menu-btn:hover { border-color: var(--primary); background: #f0f3ff; transform: translateY(-3px); }
+    .menu-btn h3 { margin: 0 0 8px 0; color: var(--primary); }
+    .menu-btn p { margin: 0; font-size: 0.85rem; color: var(--text-muted); text-align: center; }
+
     /* 問題作成ブロック */
     .q-block {
       background: #f8fafc;
@@ -73,192 +92,175 @@
       margin-bottom: 20px;
     }
 
-    .q-block-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 12px;
-    }
-
+    .q-block-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
     .q-title { font-weight: 700; font-size: 0.95rem; }
     
     .btn-delete {
-      background: #fee2e2;
-      color: var(--error);
-      border: none;
-      border-radius: 6px;
-      padding: 4px 10px;
-      font-size: 0.8rem;
-      cursor: pointer;
-      font-weight: 600;
+      background: #fee2e2; color: var(--error); border: none; border-radius: 6px;
+      padding: 4px 10px; font-size: 0.8rem; cursor: pointer; font-weight: 600;
     }
     .btn-delete:hover { background: #fca5a5; transform: scale(1.05); }
 
     .form-group { margin-bottom: 12px; }
     label { display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 6px; }
 
-    input[type="text"], select {
-      width: 100%;
-      padding: 10px 14px;
-      border: 1.5px solid var(--border);
-      border-radius: 8px;
-      font-size: 0.9rem;
-      outline: none;
-      background: #fff;
+    input[type="text"], input[type="password"], select, textarea {
+      width: 100%; padding: 10px 14px; border: 1.5px solid var(--border);
+      border-radius: 8px; font-size: 0.9rem; outline: none; background: #fff;
     }
-    input[type="text"]:focus, select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15); }
+    input:focus, select:focus, textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15); }
+    
+    textarea { resize: vertical; min-height: 100px; font-family: monospace; font-size: 0.85rem; }
 
-    .option-input-group {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 8px;
-    }
-    .option-input-group input[type="radio"] {
-      width: 18px;
-      height: 18px;
-      accent-color: var(--primary);
-      cursor: pointer;
-    }
+    .option-input-group { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .option-input-group input[type="radio"] { width: 18px; height: 18px; accent-color: var(--primary); cursor: pointer; }
 
     .btn {
-      width: 100%;
-      padding: 14px;
-      background: var(--primary);
-      color: white;
-      border: none;
-      border-radius: 12px;
-      font-size: 1rem;
-      font-weight: 600;
-      cursor: pointer;
-      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+      width: 100%; padding: 14px; background: var(--primary); color: white; border: none;
+      border-radius: 12px; font-size: 1rem; font-weight: 600; cursor: pointer;
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2); margin-bottom: 12px;
     }
     .btn:hover { background: var(--primary-hover); transform: translateY(-2px); box-shadow: 0 6px 16px rgba(99, 102, 241, 0.3); }
-    .btn:active { transform: translateY(0); scale: 0.98; }
-
-    .btn-secondary {
-      background: #ffffff;
-      color: var(--primary);
-      border: 2px solid var(--primary);
-      box-shadow: none;
-      margin-bottom: 16px;
-    }
+    .btn-secondary { background: #ffffff; color: var(--primary); border: 2px solid var(--primary); box-shadow: none; }
     .btn-secondary:hover { background: #f0f3ff; }
 
-    .btn-twitter {
-      background: var(--twitter);
-      color: white;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-      margin-bottom: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      text-decoration: none;
+    /* パスワード設定エリア */
+    .password-area {
+      background: #fffbeb; border: 1px solid #fde68a; border-radius: 12px;
+      padding: 16px; margin-bottom: 24px;
     }
-    .btn-twitter:hover { background: #333333; transform: translateY(-2px); color: white; }
+    .password-area label { color: #d97706; }
 
-    /* 解答UI */
+    /* UI共通 */
     .badge {
-      background: #e0e7ff;
-      color: var(--primary);
-      padding: 4px 12px;
-      border-radius: 20px;
-      font-size: 0.85rem;
-      font-weight: 700;
-      display: inline-block;
-      margin-bottom: 12px;
+      background: #e0e7ff; color: var(--primary); padding: 4px 12px; border-radius: 20px;
+      font-size: 0.85rem; font-weight: 700; display: inline-block; margin-bottom: 12px;
     }
-
-    .progress-container {
-      width: 100%;
-      background: var(--border);
-      height: 8px;
-      border-radius: 4px;
-      overflow: hidden;
-      margin-bottom: 20px;
-    }
+    .progress-container { width: 100%; background: var(--border); height: 8px; border-radius: 4px; overflow: hidden; margin-bottom: 20px; }
     .progress-bar { height: 100%; background: var(--primary); width: 0%; transition: width 0.4s ease; }
 
     .quiz-option-btn {
-      width: 100%;
-      padding: 16px;
-      background: #f8fafc;
-      border: 2px solid var(--border);
-      border-radius: 12px;
-      font-size: 0.95rem;
-      font-weight: 500;
-      text-align: left;
-      margin-bottom: 12px;
-      cursor: pointer;
+      width: 100%; padding: 16px; background: #f8fafc; border: 2px solid var(--border);
+      border-radius: 12px; font-size: 0.95rem; font-weight: 500; text-align: left;
+      margin-bottom: 12px; cursor: pointer;
     }
-    .quiz-option-btn.correct {
-      background: #ecfdf5;
-      border-color: var(--success);
-      color: #065f46;
-      font-weight: 700;
-    }
-    .quiz-option-btn.incorrect {
-      background: #fef2f2;
-      border-color: var(--error);
-      color: #991b1b;
-    }
+    .quiz-option-btn.correct { background: #ecfdf5; border-color: var(--success); color: #065f46; font-weight: 700; }
+    .quiz-option-btn.incorrect { background: #fef2f2; border-color: var(--error); color: #991b1b; }
 
     .explanation-box {
-      background: #f1f5f9;
-      border-left: 4px solid var(--primary);
-      padding: 12px 16px;
-      border-radius: 0 8px 8px 0;
-      margin-top: 16px;
-      font-size: 0.9rem;
+      background: #f1f5f9; border-left: 4px solid var(--primary); padding: 12px 16px;
+      border-radius: 0 8px 8px 0; margin-top: 16px; font-size: 0.9rem;
     }
 
-    #share-area {
-      margin-top: 20px;
-      padding: 16px;
-      background: #f8fafc;
-      border-radius: 12px;
-      border: 1px dashed var(--border);
-      text-align: center;
-    }
+    #share-area { margin-top: 20px; padding: 16px; background: #f8fafc; border-radius: 12px; border: 1px dashed var(--border); text-align: center; }
     #share-url { word-break: break-all; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px; }
 
-    footer {
-      text-align: center;
-      font-size: 0.85rem;
-      color: var(--text-muted);
-      margin-top: 8px;
-      letter-spacing: 0.05em;
-    }
+    footer { text-align: center; font-size: 0.85rem; color: var(--text-muted); margin-top: 8px; letter-spacing: 0.05em; }
+    .hidden { display: none !important; }
 
-    .hidden { display: none; }
+    /* AIプロンプトエリア */
+    .ai-prompt-box {
+      background: #1e293b; color: #f8fafc; padding: 12px; border-radius: 8px;
+      font-size: 0.8rem; font-family: monospace; white-space: pre-wrap; margin-bottom: 12px;
+    }
   </style>
 </head>
 <body>
 
 <div class="container">
-  <!-- 作成モード -->
-  <div id="create-mode" class="card">
+
+  <!-- 作成者メニュー（ホーム） -->
+  <div id="creator-menu" class="card">
     <div class="header">
       <h1>Quiz Maker</h1>
-      <p>複数形式対応 クイズメーカー</p>
+      <p>作成者メニュー</p>
+    </div>
+    <div class="menu-btn" onclick="showCreateMode()">
+      <h3>✍️ 手動でクイズを作る</h3>
+      <p>問題文や選択肢を一つずつ入力して作成します。</p>
+    </div>
+    <div class="menu-btn" onclick="showAiImportMode()">
+      <h3>🤖 AI(Gemini)に作ってもらう</h3>
+      <p>Geminiにコードを出力してもらい、一瞬で取り込みます。</p>
+    </div>
+  </div>
+
+  <!-- AIインポートモード -->
+  <div id="ai-import-mode" class="card hidden">
+    <div class="header">
+      <button class="nav-btn" onclick="goToMenu()">メニューへ</button>
+      <h1>AI連携インポート</h1>
+      <p>Geminiが出力したコードを貼り付けてください</p>
+    </div>
+    
+    <label>1. 以下の指示文をコピーしてGeminiに送信してください</label>
+    <div class="ai-prompt-box" id="ai-prompt-text">あなたは優秀なクイズ作成者です。以下のJSONフォーマットのみを出力してください。余計なテキストやMarkdownは不要です。
+
+[
+  {
+    "type": "select",
+    "q": "問題文",
+    "opts": ["選択肢1", "選択肢2", "選択肢3", "選択肢4"],
+    "ans": 0,
+    "exp": "解説文"
+  },
+  {
+    "type": "tf",
+    "q": "〇×問題文",
+    "ans": 0,
+    "exp": "解説文(0が正しい, 1が誤り)"
+  }
+]</div>
+    <button class="btn btn-secondary" onclick="copyPrompt()">📋 プロンプトをコピー</button>
+
+    <div style="margin-top: 24px;">
+      <label>2. Geminiから返ってきたコード(JSON)を貼り付け</label>
+      <textarea id="ai-json-input" placeholder='[{"type":"select", "q":"...", ...}]'></textarea>
+    </div>
+    <button class="btn" onclick="importAiJson()">クイズを取り込む</button>
+  </div>
+
+  <!-- 作成モード -->
+  <div id="create-mode" class="card hidden">
+    <div class="header">
+      <button class="nav-btn" onclick="goToMenu()">メニューへ</button>
+      <h1>Quiz Editor</h1>
+      <p>クイズの編集と発行</p>
+    </div>
+
+    <!-- パスワード設定 -->
+    <div class="password-area">
+      <label>🔒 クイズのパスワード（任意）</label>
+      <p style="font-size:0.8rem; margin:4px 0 8px 0; color:var(--text-muted);">設定すると、遊ぶ前にパスワード入力が必要になります。</p>
+      <input type="password" id="quiz-password" placeholder="パスワードを入力（空欄なら不要）">
     </div>
 
     <div id="questions-container"></div>
 
     <button class="btn btn-secondary" onclick="addQuestionBlock()">＋ 問題を追加する</button>
-    <button class="btn" onclick="generateQuiz()">クイズURLを発行する</button>
+    <button class="btn" onclick="generateQuiz()">暗号化してURLを発行する</button>
 
     <div id="share-area" class="hidden">
       <div id="share-url"></div>
-      <button class="btn" onclick="copyUrl()" id="copy-btn" style="margin-top: 10px;">URLをコピー</button>
+      <button class="btn btn-secondary" onclick="copyUrl()" id="copy-btn" style="margin-top: 10px;">URLをコピー</button>
     </div>
+  </div>
+
+  <!-- パスワード入力画面（回答者用） -->
+  <div id="password-screen" class="card hidden" style="text-align: center;">
+    <div class="header">
+      <h1>🔒 パスワード保護</h1>
+      <p>このクイズを遊ぶにはパスワードが必要です</p>
+    </div>
+    <input type="password" id="play-password" placeholder="パスワードを入力" style="margin-bottom: 16px; text-align: center; font-size: 1.2rem;">
+    <button class="btn" onclick="checkPassword()">クイズを開始する</button>
+    <p id="pwd-error" style="color: var(--error); font-size: 0.85rem; margin-top: 10px;" class="hidden">パスワードが間違っています。</p>
   </div>
 
   <!-- 回答モード -->
   <div id="play-mode" class="card hidden">
     <div class="header">
-      <button class="nav-btn" onclick="goToCreate()">作成画面へ</button>
+      <button class="nav-btn" onclick="goToMenu()">トップへ</button>
       <span id="quiz-badge" class="badge">問 1</span>
       <div class="progress-container"><div id="progress-bar" class="progress-bar"></div></div>
       <h2 id="quiz-question" style="margin: 0; font-size: 1.3rem;"></h2>
@@ -280,15 +282,11 @@
     <div id="score-display" style="font-size: 2.2rem; font-weight: 800; color: var(--primary); margin: 10px 0;"></div>
     <div id="score-percent" style="font-size: 1.1rem; color: var(--text-muted); margin-bottom: 20px; font-weight: 600;"></div>
     
-    <a id="twitter-share-btn" class="btn btn-twitter" href="#" target="_blank" rel="noopener noreferrer">
-      𝕏 結果をポストしてシェア
-    </a>
-    
     <button class="btn" onclick="restartQuiz()" style="margin-bottom: 10px;">もう一度挑戦する</button>
-    <button class="btn btn-secondary" onclick="goToCreate()">自分もクイズを作る</button>
+    <button class="btn btn-secondary" onclick="goToMenu()">自分もクイズを作る</button>
   </div>
 
-  <footer>© tr0310 | Version 1.4.0</footer>
+  <footer>© tr0310 | Version 1.5.0</footer>
 </div>
 
 <script>
@@ -296,7 +294,9 @@
   let currentQuizData = [];
   let currentQIndex = 0;
   let score = 0;
+  let requiredPwdHash = null;
 
+  // --- ユーティリティ関数 ---
   function normalizeText(str) {
     return str.trim().toLowerCase().replace(/\s+/g, '').replace(/[Ａ-Ｚａ-ｚ０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
   }
@@ -315,7 +315,6 @@
     return JSON.parse(decodeURIComponent(Array.prototype.map.call(atob(str), c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join('')));
   }
 
-  // 配列をシャッフルする関数（Fisher-Yatesアルゴリズム）
   function shuffleArray(array) {
     const arr = [...array];
     for (let i = arr.length - 1; i > 0; i--) {
@@ -325,10 +324,81 @@
     return arr;
   }
 
-  function goToCreate() {
-    window.location.href = window.location.pathname;
+  // --- 画面遷移管理 ---
+  function hideAll() {
+    ['creator-menu', 'ai-import-mode', 'create-mode', 'password-screen', 'play-mode', 'score-mode'].forEach(id => {
+      document.getElementById(id).classList.add('hidden');
+    });
   }
 
+  function goToMenu() {
+    window.location.href = window.location.pathname; // URLハッシュを消してリロード
+  }
+
+  function showCreateMode() {
+    hideAll();
+    document.getElementById('create-mode').classList.remove('hidden');
+    if (qCount === 0) addQuestionBlock();
+  }
+
+  function showAiImportMode() {
+    hideAll();
+    document.getElementById('ai-import-mode').classList.remove('hidden');
+  }
+
+  // --- AIインポート関連 ---
+  function copyPrompt() {
+    navigator.clipboard.writeText(document.getElementById('ai-prompt-text').innerText);
+    alert('プロンプトをコピーしました！Geminiに貼り付けてください。');
+  }
+
+  function importAiJson() {
+    const jsonStr = document.getElementById('ai-json-input').value.trim();
+    if (!jsonStr) { alert('JSONコードを貼り付けてください。'); return; }
+
+    try {
+      // Markdownのコードブロックタグ(```json)が含まれていたら除去する
+      const cleanJsonStr = jsonStr.replace(/```json/g, '').replace(/```/g, '').trim();
+      const aiData = JSON.parse(cleanJsonStr);
+      
+      if (!Array.isArray(aiData)) throw new Error('配列形式ではありません');
+
+      document.getElementById('questions-container').innerHTML = '';
+      qCount = 0;
+
+      aiData.forEach(q => {
+        addQuestionBlock();
+        const block = document.getElementById(`q-block-${qCount}`);
+        
+        block.querySelector(`#type-${qCount}`).value = q.type || 'select';
+        updateTypeUI(qCount);
+        
+        block.querySelector('.q-text').value = q.q || '';
+        block.querySelector('.q-exp').value = q.exp || '';
+
+        if (q.type === 'select') {
+          for(let i=0; i<4; i++) {
+            if(q.opts && q.opts[i]) block.querySelector(`.opt-${i}`).value = q.opts[i];
+          }
+          const ansRadio = block.querySelector(`input[name="correct-${qCount}"][value="${q.ans}"]`);
+          if(ansRadio) ansRadio.checked = true;
+        } else if (q.type === 'tf') {
+          const ansRadio = block.querySelector(`input[name="correct-${qCount}"][value="${q.ans}"]`);
+          if(ansRadio) ansRadio.checked = true;
+        } else if (q.type === 'text') {
+          block.querySelector('.text-ans').value = q.ans || '';
+        }
+      });
+
+      alert('AIの問題を取り込みました！内容を確認してパスワード等の設定を行い、「URLを発行」してください。');
+      showCreateMode();
+
+    } catch (e) {
+      alert('コードの読み込みに失敗しました。形式が正しいか確認してください。\n詳細: ' + e.message);
+    }
+  }
+
+  // --- クイズ作成用UI構築 ---
   function updateTypeUI(id) {
     const type = document.getElementById(`type-${id}`).value;
     const area = document.getElementById(`input-area-${id}`);
@@ -346,20 +416,11 @@
     } else if (type === 'tf') {
       area.innerHTML = `
         <label>正解を選択</label>
-        <div class="option-input-group">
-          <input type="radio" name="correct-${id}" value="0" checked> ⭕ 正しい（TRUE）
-        </div>
-        <div class="option-input-group">
-          <input type="radio" name="correct-${id}" value="1"> ❌ 誤り（FALSE）
-        </div>
+        <div class="option-input-group"><input type="radio" name="correct-${id}" value="0" checked> ⭕ 正しい</div>
+        <div class="option-input-group"><input type="radio" name="correct-${id}" value="1"> ❌ 誤り</div>
       `;
     } else if (type === 'text') {
-      area.innerHTML = `
-        <div class="form-group">
-          <label>正解のキーワード</label>
-          <input type="text" class="text-ans" placeholder="例: 富士山">
-        </div>
-      `;
+      area.innerHTML = `<div class="form-group"><label>正解のキーワード</label><input type="text" class="text-ans" placeholder="例: 富士山"></div>`;
     }
   }
 
@@ -382,20 +443,15 @@
           <option value="text">記述（自由入力）形式</option>
         </select>
       </div>
-      <div class="form-group">
-        <label>問題文</label>
-        <input type="text" class="q-text" placeholder="問題文を入力">
-      </div>
+      <div class="form-group"><label>問題文</label><input type="text" class="q-text" placeholder="問題文を入力"></div>
       <div id="input-area-${qCount}" class="form-group"></div>
-      <div class="form-group">
-        <label>解説 (任意)</label>
-        <input type="text" class="q-exp" placeholder="正解・不正解時に表示する解説">
-      </div>
+      <div class="form-group"><label>解説 (任意)</label><input type="text" class="q-exp" placeholder="正解・不正解時に表示する解説"></div>
     `;
     container.appendChild(block);
     updateTypeUI(qCount);
   }
 
+  // --- クイズ生成（暗号化） ---
   async function generateQuiz() {
     const blocks = document.querySelectorAll('.q-block');
     const quizList = [];
@@ -407,21 +463,14 @@
       const expText = block.querySelector('.q-exp').value.trim();
       const salt = Math.random().toString(36).substring(2, 8); 
 
-      if (!qText) {
-        alert('問題文を入力してください');
-        return;
-      }
+      if (!qText) { alert('問題文を入力してください'); return; }
 
-      let targetText = '';
-      let opts = [];
-      let ansIndex = 0;
+      let targetText = '', opts = [], ansIndex = 0;
 
       if (type === 'select') {
         opts = [
-          block.querySelector('.opt-0').value.trim(),
-          block.querySelector('.opt-1').value.trim(),
-          block.querySelector('.opt-2').value.trim(),
-          block.querySelector('.opt-3').value.trim(),
+          block.querySelector('.opt-0').value.trim(), block.querySelector('.opt-1').value.trim(),
+          block.querySelector('.opt-2').value.trim(), block.querySelector('.opt-3').value.trim()
         ];
         if (opts.some(o => !o)) { alert('選択肢をすべて入力してください'); return; }
         ansIndex = parseInt(block.querySelector(`input[name="correct-${id}"]:checked`).value);
@@ -442,25 +491,32 @@
       quizList.push([tIdx, qText, opts, expText, salt, ansHash, correctVal]);
     }
 
-    const encoded = encodeData(quizList);
+    // パスワードの処理
+    const rawPwd = document.getElementById('quiz-password').value;
+    let pwdHash = null;
+    if (rawPwd) {
+      pwdHash = await sha256(rawPwd);
+    }
+
+    // 新フォーマット { v: 2, p: パスワードハッシュ, d: 問題データ配列 }
+    const payload = { v: 2, p: pwdHash, d: quizList };
+    const encoded = encodeData(payload);
+    
     const baseUrl = window.location.href.split('#')[0];
     const fullUrl = `${baseUrl}#q=${encoded}`;
 
     document.getElementById('share-area').classList.remove('hidden');
     document.getElementById('share-url').innerText = '短縮URLを生成中...';
 
-    const randomId = Math.random().toString(36).substring(2, 7);
-    const customShortId = `trq-${randomId}`;
+    const customShortId = `trq-${Math.random().toString(36).substring(2, 7)}`;
     let finalUrl = fullUrl;
 
     try {
-      const res = await fetch(`https://is.gd/create.php?format=json&url=${encodeURIComponent(fullUrl)}&shorturl=${customShortId}`);
+      const res = await fetch(`[https://is.gd/create.php?format=json&url=$](https://is.gd/create.php?format=json&url=$){encodeURIComponent(fullUrl)}&shorturl=${customShortId}`);
       const data = await res.json();
-      if (data.shorturl) {
-        finalUrl = data.shorturl;
-      }
+      if (data.shorturl) finalUrl = data.shorturl;
     } catch (err) {
-      console.warn('API短縮に失敗しました。元のURLを表示します。', err);
+      console.warn('API短縮に失敗しました。元のURLを表示します。');
     }
 
     document.getElementById('share-url').innerText = finalUrl;
@@ -471,9 +527,24 @@
     const btn = document.getElementById('copy-btn');
     btn.innerText = 'コピー完了！';
     btn.style.background = 'var(--success)';
-    setTimeout(() => { btn.innerText = 'URLをコピー'; btn.style.background = 'var(--primary)'; }, 2000);
+    setTimeout(() => { btn.innerText = 'URLをコピー'; btn.style.background = '#ffffff'; }, 2000);
   }
 
+  // --- パスワード確認 ---
+  async function checkPassword() {
+    const inputPwd = document.getElementById('play-password').value;
+    const inputHash = await sha256(inputPwd);
+    
+    if (inputHash === requiredPwdHash) {
+      hideAll();
+      document.getElementById('play-mode').classList.remove('hidden');
+      loadQuestion(0);
+    } else {
+      document.getElementById('pwd-error').classList.remove('hidden');
+    }
+  }
+
+  // --- 回答用UIとロジック ---
   function loadQuestion(index) {
     const qData = currentQuizData[index];
     document.getElementById('quiz-badge').innerText = `問 ${index + 1} / ${currentQuizData.length}`;
@@ -500,7 +571,7 @@
       });
     } else if (qData.type === 'text') {
       container.innerHTML = `
-        <input type="text" id="text-input" placeholder="回答を入力してください" style="margin-bottom: 12px;">
+        <input type="text" id="text-input" placeholder="回答を入力してください" style="margin-bottom: 12px; font-size:1rem; padding:14px;">
         <button class="btn" id="submit-text-btn">回答を送信</button>
       `;
       document.getElementById('submit-text-btn').onclick = () => {
@@ -516,10 +587,8 @@
     const isCorrect = (userHash === qData.ansHash);
 
     document.querySelectorAll('.quiz-option-btn').forEach(b => b.disabled = true);
-    const textInput = document.getElementById('text-input');
-    if (textInput) textInput.disabled = true;
-    const submitBtn = document.getElementById('submit-text-btn');
-    if (submitBtn) submitBtn.disabled = true;
+    if (document.getElementById('text-input')) document.getElementById('text-input').disabled = true;
+    if (document.getElementById('submit-text-btn')) document.getElementById('submit-text-btn').disabled = true;
 
     if (isCorrect) {
       if (clickedBtn) clickedBtn.classList.add('correct');
@@ -533,9 +602,7 @@
 
       if (qData.type === 'select' || qData.type === 'tf') {
         const optionButtons = document.querySelectorAll('.quiz-option-btn');
-        if (optionButtons[qData.correctVal]) {
-          optionButtons[qData.correctVal].classList.add('correct');
-        }
+        if (optionButtons[qData.correctVal]) optionButtons[qData.correctVal].classList.add('correct');
       } else if (qData.type === 'text') {
         msgArea.innerText += ` （正解: ${qData.correctVal}）`;
       }
@@ -557,60 +624,69 @@
     if (currentQIndex < currentQuizData.length) {
       loadQuestion(currentQIndex);
     } else {
-      document.getElementById('play-mode').classList.add('hidden');
+      hideAll();
       document.getElementById('score-mode').classList.remove('hidden');
       
       const total = currentQuizData.length;
       const percent = Math.round((score / total) * 100);
       document.getElementById('score-display').innerText = `${total} 問中 ${score} 問正解`;
       document.getElementById('score-percent').innerText = `正答率: ${percent}%`;
-
-      // X（Twitter）シェア用リンクの生成
-      const shareText = encodeURIComponent(`クイズに挑戦しました！\n結果：${total}問中 ${score}問正解（正答率 ${percent}%）\n\n#サーバーレスクイズメーカー`);
-      const shareUrl = `https://twitter.com/intent/tweet?text=${shareText}&url=${encodeURIComponent(window.location.href)}`;
-      document.getElementById('twitter-share-btn').href = shareUrl;
     }
   }
 
   function restartQuiz() {
-    currentQIndex = 0;
-    score = 0;
-    // リトライ時にも問題をシャッフルし直す
+    currentQIndex = 0; score = 0;
     currentQuizData = shuffleArray(currentQuizData);
-    document.getElementById('score-mode').classList.add('hidden');
+    hideAll();
     document.getElementById('play-mode').classList.remove('hidden');
     loadQuestion(0);
   }
 
+  // --- 初期読み込みロジック ---
   window.onload = function() {
     const hash = window.location.hash;
     if (hash && hash.startsWith('#q=')) {
-      document.getElementById('create-mode').classList.add('hidden');
-      document.getElementById('play-mode').classList.remove('hidden');
+      hideAll();
       try {
         const decoded = decodeData(hash.replace('#q=', ''));
-        const rawData = decoded.map(item => {
+        let rawData = [];
+
+        // v1とv2のフォーマット互換性チェック
+        if (Array.isArray(decoded)) {
+          rawData = decoded;
+          requiredPwdHash = null;
+        } else if (decoded.v === 2) {
+          rawData = decoded.d;
+          requiredPwdHash = decoded.p;
+        }
+
+        const parsedData = rawData.map(item => {
           if (Array.isArray(item)) {
             return {
               type: item[0] === 1 ? 'select' : item[0] === 2 ? 'tf' : 'text',
-              q: item[1],
-              opts: item[2],
-              exp: item[3],
-              salt: item[4],
-              ansHash: item[5],
-              correctVal: item[6]
+              q: item[1], opts: item[2], exp: item[3],
+              salt: item[4], ansHash: item[5], correctVal: item[6]
             };
           }
           return item; 
         });
-        // 読み込み時に問題をシャッフルする
-        currentQuizData = shuffleArray(rawData);
-        loadQuestion(0);
+
+        currentQuizData = shuffleArray(parsedData);
+
+        if (requiredPwdHash) {
+          document.getElementById('password-screen').classList.remove('hidden');
+        } else {
+          document.getElementById('play-mode').classList.remove('hidden');
+          loadQuestion(0);
+        }
       } catch (e) {
         alert('クイズデータの読み込みに失敗しました');
+        goToMenu();
       }
     } else {
-      addQuestionBlock();
+      // URLハッシュがない場合はメニューを表示
+      hideAll();
+      document.getElementById('creator-menu').classList.remove('hidden');
     }
   };
 </script>
