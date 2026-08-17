@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>サーバーレス 高機能クイズメーカー v1.5</title>
+  <title>サーバーレス 高機能クイズメーカー v1.6</title>
   <style>
     :root {
       --primary: #6366f1;
@@ -15,7 +15,7 @@
       --success: #10b981;
       --error: #ef4444;
       --border: #e2e8f0;
-      --twitter: #000000;
+      --warning: #f59e0b;
     }
 
     * { box-sizing: border-box; transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1); }
@@ -43,6 +43,11 @@
       border: 1px solid rgba(255, 255, 255, 0.8);
       margin-bottom: 20px;
       animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
     }
 
     .header { text-align: center; margin-bottom: 24px; position: relative; }
@@ -94,7 +99,7 @@
 
     .q-block-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
     .q-title { font-weight: 700; font-size: 0.95rem; }
-    
+
     .btn-delete {
       background: #fee2e2; color: var(--error); border: none; border-radius: 6px;
       padding: 4px 10px; font-size: 0.8rem; cursor: pointer; font-weight: 600;
@@ -109,7 +114,7 @@
       border-radius: 8px; font-size: 0.9rem; outline: none; background: #fff;
     }
     input:focus, select:focus, textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15); }
-    
+
     textarea { resize: vertical; min-height: 100px; font-family: monospace; font-size: 0.85rem; }
 
     .option-input-group { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
@@ -130,6 +135,8 @@
       padding: 16px; margin-bottom: 24px;
     }
     .password-area label { color: #d97706; }
+    .password-row { margin-bottom: 12px; }
+    .password-row:last-child { margin-bottom: 0; }
 
     /* UI共通 */
     .badge {
@@ -173,7 +180,7 @@
   <div id="creator-menu" class="card">
     <div class="header">
       <h1>Quiz Maker</h1>
-      <p>作成者メニュー</p>
+      <p>作成者メニュー (v1.6)</p>
     </div>
     <div class="menu-btn" onclick="showCreateMode()">
       <h3>✍️ 手動でクイズを作る</h3>
@@ -181,8 +188,30 @@
     </div>
     <div class="menu-btn" onclick="showAiImportMode()">
       <h3>🤖 AI(Gemini)に作ってもらう</h3>
-      <p>Geminiにコードを出力してもらい、一瞬で取り込みます。</p>
+      <p>Geminiに出力してもらったコードを一瞬で取り込みます。</p>
     </div>
+    <div class="menu-btn" onclick="showManageMode()">
+      <h3>🛠️ 作成済みクイズを管理・編集する</h3>
+      <p>発行したURLとパスワードを使って、クイズを修正します。</p>
+    </div>
+  </div>
+
+  <!-- 管理・編集モード -->
+  <div id="manage-mode" class="card hidden">
+    <div class="header">
+      <button class="nav-btn" onclick="goToMenu()">メニューへ</button>
+      <h1>クイズの管理・編集</h1>
+      <p>発行したURLからクイズデータを復元します</p>
+    </div>
+    <div class="form-group">
+      <label>発行したURL（またはハッシュコード）</label>
+      <input type="text" id="manage-url" placeholder="https://...#q=...">
+    </div>
+    <div class="form-group">
+      <label>作成者パスワード</label>
+      <input type="password" id="manage-pwd" placeholder="作成時に設定したパスワードを入力">
+    </div>
+    <button class="btn" onclick="loadQuizForEdit()">データを読み込んで編集する</button>
   </div>
 
   <!-- AIインポートモード -->
@@ -192,7 +221,7 @@
       <h1>AI連携インポート</h1>
       <p>Geminiが出力したコードを貼り付けてください</p>
     </div>
-    
+
     <label>1. 以下の指示文をコピーしてGeminiに送信してください</label>
     <div class="ai-prompt-box" id="ai-prompt-text">あなたは優秀なクイズ作成者です。以下のJSONフォーマットのみを出力してください。余計なテキストやMarkdownは不要です。
 
@@ -230,9 +259,16 @@
 
     <!-- パスワード設定 -->
     <div class="password-area">
-      <label>🔒 クイズのパスワード（任意）</label>
-      <p style="font-size:0.8rem; margin:4px 0 8px 0; color:var(--text-muted);">設定すると、遊ぶ前にパスワード入力が必要になります。</p>
-      <input type="password" id="quiz-password" placeholder="パスワードを入力（空欄なら不要）">
+      <div class="password-row">
+        <label>🛠️ 編集用(作成者)パスワード（推奨）</label>
+        <p style="font-size:0.75rem; margin:2px 0 6px 0; color:var(--text-muted);">設定すると、後からこのクイズを修正・確認できます。</p>
+        <input type="password" id="creator-password" placeholder="編集用パスワードを入力">
+      </div>
+      <div class="password-row" style="margin-top: 12px; border-top: 1px dashed #fde68a; padding-top: 12px;">
+        <label>🔒 回答用パスワード（任意）</label>
+        <p style="font-size:0.75rem; margin:2px 0 6px 0; color:var(--text-muted);">設定すると、遊ぶ前にパスワード入力が必要になります。</p>
+        <input type="password" id="player-password" placeholder="遊ぶためのパスワード（空欄なら不要）">
+      </div>
     </div>
 
     <div id="questions-container"></div>
@@ -281,12 +317,12 @@
     </div>
     <div id="score-display" style="font-size: 2.2rem; font-weight: 800; color: var(--primary); margin: 10px 0;"></div>
     <div id="score-percent" style="font-size: 1.1rem; color: var(--text-muted); margin-bottom: 20px; font-weight: 600;"></div>
-    
+
     <button class="btn" onclick="restartQuiz()" style="margin-bottom: 10px;">もう一度挑戦する</button>
     <button class="btn btn-secondary" onclick="goToMenu()">自分もクイズを作る</button>
   </div>
 
-  <footer>© tr0310 | Version 1.5.0</footer>
+  <footer>© tr0310 | Version 1.6.0</footer>
 </div>
 
 <script>
@@ -294,7 +330,7 @@
   let currentQuizData = [];
   let currentQIndex = 0;
   let score = 0;
-  let requiredPwdHash = null;
+  let requiredPwdHash = null; // 回答者用パスワードハッシュ
 
   // --- ユーティリティ関数 ---
   function normalizeText(str) {
@@ -326,7 +362,7 @@
 
   // --- 画面遷移管理 ---
   function hideAll() {
-    ['creator-menu', 'ai-import-mode', 'create-mode', 'password-screen', 'play-mode', 'score-mode'].forEach(id => {
+    ['creator-menu', 'manage-mode', 'ai-import-mode', 'create-mode', 'password-screen', 'play-mode', 'score-mode'].forEach(id => {
       document.getElementById(id).classList.add('hidden');
     });
   }
@@ -346,6 +382,92 @@
     document.getElementById('ai-import-mode').classList.remove('hidden');
   }
 
+  function showManageMode() {
+    hideAll();
+    document.getElementById('manage-mode').classList.remove('hidden');
+  }
+
+  // --- クイズ管理・編集ロジック ---
+  async function loadQuizForEdit() {
+    let url = document.getElementById('manage-url').value.trim();
+    const pwd = document.getElementById('manage-pwd').value;
+
+    if (!url) { alert('URLまたはデータ文字列を入力してください'); return; }
+
+    let hashStr = url;
+    if (url.includes('#q=')) {
+      hashStr = url.split('#q=')[1];
+    }
+
+    try {
+      const decoded = decodeData(hashStr);
+      let rawData = [];
+      let cpHash = null;
+
+      // バージョン互換性チェック
+      if (Array.isArray(decoded)) {
+        alert('このクイズは古い形式(v1)のため、編集機能に対応していません。'); return;
+      } else if (decoded.v === 2) {
+        alert('このクイズは古い形式(v2)のため、作成者パスワードが設定されていません。そのまま編集画面を開きます。');
+        rawData = decoded.d;
+      } else if (decoded.v === 3) {
+        rawData = decoded.d;
+        cpHash = decoded.cp;
+        
+        // パスワード照合
+        if (cpHash) {
+          if (!pwd) { alert('このクイズの編集には作成者パスワードが必要です。'); return; }
+          const inputHash = await sha256(pwd);
+          if (inputHash !== cpHash) { alert('作成者パスワードが間違っています。'); return; }
+        }
+      }
+
+      showCreateMode();
+      populateEditor(rawData);
+
+    } catch (e) {
+      alert('読み込みに失敗しました。URLが正しくないか、データが壊れています。');
+      console.error(e);
+    }
+  }
+
+  function populateEditor(data) {
+    document.getElementById('questions-container').innerHTML = '';
+    qCount = 0;
+    
+    data.forEach(item => {
+      addQuestionBlock();
+      const block = document.getElementById(`q-block-${qCount}`);
+      
+      let type = item[0] === 1 ? 'select' : item[0] === 2 ? 'tf' : 'text';
+      block.querySelector(`#type-${qCount}`).value = type;
+      updateTypeUI(qCount); // UIを更新
+      
+      block.querySelector('.q-text').value = item[1];
+      block.querySelector('.q-exp').value = item[3];
+      
+      if (type === 'select') {
+        block.querySelector('.opt-0').value = item[2][0];
+        block.querySelector('.opt-1').value = item[2][1];
+        block.querySelector('.opt-2').value = item[2][2];
+        block.querySelector('.opt-3').value = item[2][3];
+        const ansRadio = block.querySelector(`input[name="correct-${qCount}"][value="${item[6]}"]`);
+        if(ansRadio) ansRadio.checked = true;
+      } else if (type === 'tf') {
+        const ansRadio = block.querySelector(`input[name="correct-${qCount}"][value="${item[6]}"]`);
+        if(ansRadio) ansRadio.checked = true;
+      } else if (type === 'text') {
+        block.querySelector('.text-ans').value = item[6];
+      }
+    });
+
+    // ハッシュから元のパスワードは復元できないため空にする
+    document.getElementById('creator-password').value = '';
+    document.getElementById('player-password').value = '';
+    
+    alert('クイズデータを読み込みました。\n再編集後、「URLを発行」ボタンで新しいURLを生成してください。\n\n※セキュリティ上の理由により、各種パスワードは引き継がれません。必要な場合は再設定してください。');
+  }
+
   // --- AIインポート関連 ---
   function copyPrompt() {
     navigator.clipboard.writeText(document.getElementById('ai-prompt-text').innerText);
@@ -357,10 +479,9 @@
     if (!jsonStr) { alert('JSONコードを貼り付けてください。'); return; }
 
     try {
-      // Markdownのコードブロックタグ(```json)が含まれていたら除去する
       const cleanJsonStr = jsonStr.replace(/```json/g, '').replace(/```/g, '').trim();
       const aiData = JSON.parse(cleanJsonStr);
-      
+
       if (!Array.isArray(aiData)) throw new Error('配列形式ではありません');
 
       document.getElementById('questions-container').innerHTML = '';
@@ -369,10 +490,10 @@
       aiData.forEach(q => {
         addQuestionBlock();
         const block = document.getElementById(`q-block-${qCount}`);
-        
+
         block.querySelector(`#type-${qCount}`).value = q.type || 'select';
         updateTypeUI(qCount);
-        
+
         block.querySelector('.q-text').value = q.q || '';
         block.querySelector('.q-exp').value = q.exp || '';
 
@@ -402,7 +523,7 @@
   function updateTypeUI(id) {
     const type = document.getElementById(`type-${id}`).value;
     const area = document.getElementById(`input-area-${id}`);
-    
+
     if (type === 'select') {
       area.innerHTML = `
         <label>選択肢（ラジオボタンで正解を指定）</label>
@@ -491,17 +612,16 @@
       quizList.push([tIdx, qText, opts, expText, salt, ansHash, correctVal]);
     }
 
-    // パスワードの処理
-    const rawPwd = document.getElementById('quiz-password').value;
-    let pwdHash = null;
-    if (rawPwd) {
-      pwdHash = await sha256(rawPwd);
-    }
+    // 各種パスワードの処理
+    const rawCp = document.getElementById('creator-password').value;
+    const rawPp = document.getElementById('player-password').value;
+    let cpHash = rawCp ? await sha256(rawCp) : null;
+    let ppHash = rawPp ? await sha256(rawPp) : null;
 
-    // 新フォーマット { v: 2, p: パスワードハッシュ, d: 問題データ配列 }
-    const payload = { v: 2, p: pwdHash, d: quizList };
+    // 新フォーマット { v: 3, cp: 作成者パスワード, pp: 回答者パスワード, d: 問題データ配列 }
+    const payload = { v: 3, cp: cpHash, pp: ppHash, d: quizList };
     const encoded = encodeData(payload);
-    
+
     const baseUrl = window.location.href.split('#')[0];
     const fullUrl = `${baseUrl}#q=${encoded}`;
 
@@ -512,7 +632,7 @@
     let finalUrl = fullUrl;
 
     try {
-      const res = await fetch(`[https://is.gd/create.php?format=json&url=$](https://is.gd/create.php?format=json&url=$){encodeURIComponent(fullUrl)}&shorturl=${customShortId}`);
+      const res = await fetch(`https://is.gd/create.php?format=json&url=${encodeURIComponent(fullUrl)}&shorturl=${customShortId}`);
       const data = await res.json();
       if (data.shorturl) finalUrl = data.shorturl;
     } catch (err) {
@@ -530,11 +650,11 @@
     setTimeout(() => { btn.innerText = 'URLをコピー'; btn.style.background = '#ffffff'; }, 2000);
   }
 
-  // --- パスワード確認 ---
+  // --- パスワード確認（回答者用） ---
   async function checkPassword() {
     const inputPwd = document.getElementById('play-password').value;
     const inputHash = await sha256(inputPwd);
-    
+
     if (inputHash === requiredPwdHash) {
       hideAll();
       document.getElementById('play-mode').classList.remove('hidden');
@@ -550,11 +670,11 @@
     document.getElementById('quiz-badge').innerText = `問 ${index + 1} / ${currentQuizData.length}`;
     document.getElementById('progress-bar').style.width = `${((index + 1) / currentQuizData.length) * 100}%`;
     document.getElementById('quiz-question').innerText = qData.q;
-    
+
     const container = document.getElementById('options-container');
     container.innerHTML = '';
     document.getElementById('result-message').innerText = '';
-    
+
     const expBox = document.getElementById('explanation-container');
     expBox.classList.add('hidden');
     expBox.innerText = '';
@@ -626,7 +746,7 @@
     } else {
       hideAll();
       document.getElementById('score-mode').classList.remove('hidden');
-      
+
       const total = currentQuizData.length;
       const percent = Math.round((score / total) * 100);
       document.getElementById('score-display').innerText = `${total} 問中 ${score} 問正解`;
@@ -651,13 +771,16 @@
         const decoded = decodeData(hash.replace('#q=', ''));
         let rawData = [];
 
-        // v1とv2のフォーマット互換性チェック
+        // v1, v2, v3のフォーマット互換性チェック
         if (Array.isArray(decoded)) {
           rawData = decoded;
           requiredPwdHash = null;
         } else if (decoded.v === 2) {
           rawData = decoded.d;
-          requiredPwdHash = decoded.p;
+          requiredPwdHash = decoded.p; // v2のプレイヤー用パスワード
+        } else if (decoded.v === 3) {
+          rawData = decoded.d;
+          requiredPwdHash = decoded.pp; // v3のプレイヤー用パスワード
         }
 
         const parsedData = rawData.map(item => {
@@ -684,7 +807,6 @@
         goToMenu();
       }
     } else {
-      // URLハッシュがない場合はメニューを表示
       hideAll();
       document.getElementById('creator-menu').classList.remove('hidden');
     }
