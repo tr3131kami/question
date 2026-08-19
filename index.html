@@ -3,9 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>サーバーレス 高機能クイズメーカー v1.9</title>
+  <title>サーバーレス 高機能クイズメーカー v2.0</title>
   <!-- QRコード生成ライブラリ -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <!-- データ圧縮ライブラリ（長すぎるURLエラーを回避） -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js"></script>
   <style>
     :root {
       --primary: #6366f1;
@@ -99,11 +101,12 @@
       width: 100%; padding: 14px; background: var(--primary); color: white; border: none;
       border-radius: 12px; font-size: 1rem; font-weight: 600; cursor: pointer;
       box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2); margin-bottom: 12px;
+      display: flex; justify-content: center; align-items: center; gap: 8px;
     }
     .btn:hover { background: var(--primary-hover); transform: translateY(-2px); box-shadow: 0 6px 16px rgba(99, 102, 241, 0.3); }
     .btn-secondary { background: #ffffff; color: var(--primary); border: 2px solid var(--primary); box-shadow: none; }
     .btn-secondary:hover { background: #f0f3ff; }
-    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    .btn:disabled { opacity: 0.7; cursor: not-allowed; transform: none; box-shadow: none; }
 
     .password-area { background: #fffbeb; border: 1px solid #fde68a; border-radius: 12px; padding: 16px; margin-bottom: 24px; }
     .password-area label { color: #d97706; }
@@ -124,7 +127,7 @@
     .explanation-box { background: #f1f5f9; border-left: 4px solid var(--primary); padding: 12px 16px; border-radius: 0 8px 8px 0; margin-top: 16px; font-size: 0.9rem; }
     
     #share-area { margin-top: 20px; padding: 16px; background: #f8fafc; border-radius: 12px; border: 1px dashed var(--border); }
-    #share-url { word-break: break-all; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px; background: #fff; padding: 12px; border-radius: 8px; border: 1px solid var(--border); }
+    #share-url { word-break: break-all; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px; background: #fff; padding: 12px; border-radius: 8px; border: 1px solid var(--border); min-height: 44px; display: flex; align-items: center; justify-content: center; }
 
     .switch-container { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: #ffffff; border: 1px solid var(--border); border-radius: 10px; margin-bottom: 16px; }
     .switch-label { font-size: 0.85rem; font-weight: 600; color: var(--text); }
@@ -136,10 +139,8 @@
     input:checked + .slider:before { transform: translateX(22px); }
 
     .action-group { display: flex; gap: 8px; margin-bottom: 8px; }
-    .action-group .btn { margin-bottom: 0; padding: 10px; font-size: 0.85rem; flex: 1; display: flex; justify-content: center; align-items: center; }
+    .action-group .btn { margin-bottom: 0; padding: 10px; font-size: 0.85rem; flex: 1; }
     
-    .btn-shorten { background-color: #8b5cf6 !important; } /* 紫色 */
-    .btn-shorten:hover { background-color: #7c3aed !important; }
     .btn-qr { background-color: #0284c7 !important; }
     .btn-qr:hover { background-color: #0369a1 !important; }
 
@@ -152,6 +153,10 @@
     footer { text-align: center; font-size: 0.85rem; color: var(--text-muted); margin-top: 8px; letter-spacing: 0.05em; }
     .hidden { display: none !important; }
     .ai-prompt-box { background: #1e293b; color: #f8fafc; padding: 12px; border-radius: 8px; font-size: 0.8rem; font-family: monospace; white-space: pre-wrap; margin-bottom: 12px; }
+    
+    /* ローディングスピナー */
+    .spinner { border: 3px solid rgba(255,255,255,0.3); border-radius: 50%; border-top: 3px solid white; width: 18px; height: 18px; animation: spin 1s linear infinite; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
@@ -162,7 +167,7 @@
   <div id="creator-menu" class="card">
     <div class="header">
       <h1>Quiz Maker</h1>
-      <p>作成者メニュー (v1.9)</p>
+      <p>作成者メニュー (v2.0 自動短縮版)</p>
     </div>
     <div class="menu-btn" onclick="showCreateMode()">
       <h3>✍️ 手動でクイズを作る</h3>
@@ -182,14 +187,14 @@
       <h1>クイズの管理・編集</h1>
     </div>
     <div class="form-group">
-      <label>URL（ハッシュコードを含むURL）</label>
-      <input type="text" id="manage-url" placeholder="https://...">
+      <label>URL（自動短縮されたURL、または元のURL）</label>
+      <input type="text" id="manage-url" placeholder="https://is.gd/...">
     </div>
     <div class="form-group">
       <label>作成者パスワード</label>
       <input type="password" id="manage-pwd" placeholder="作成時に設定したパスワード">
     </div>
-    <button class="btn" onclick="loadQuizForEdit()">編集する</button>
+    <button class="btn" onclick="loadQuizForEdit()">編集データを展開する</button>
   </div>
 
   <!-- AIインポートモード -->
@@ -226,22 +231,22 @@
       </div>
       <div class="password-row" style="margin-top: 12px; border-top: 1px dashed #fde68a; padding-top: 12px;">
         <label>🔒 回答用パスワード（任意）</label>
-        <input type="password" id="player-password" placeholder="遊ぶためのパスワード" oninput="updateShareUrlDisplay()">
+        <input type="password" id="player-password" placeholder="遊ぶためのパスワード" oninput="handlePasswordChange()">
       </div>
     </div>
 
     <div id="questions-container"></div>
     <button class="btn btn-secondary" onclick="addQuestionBlock()">＋ 問題を追加する</button>
-    <button class="btn" onclick="generateQuiz()">URLを発行する</button>
+    <button class="btn" id="generate-btn" onclick="generateQuiz()">🚀 自動短縮してURLを発行する</button>
 
     <!-- 共有エリア -->
     <div id="share-area" class="hidden">
-      <p style="font-size: 0.85rem; font-weight: bold; margin-bottom: 8px;">共有用URL</p>
+      <p style="font-size: 0.85rem; font-weight: bold; margin-bottom: 8px;">共有用URL（QRコード対応）</p>
       
       <div class="switch-container">
         <span class="switch-label">パスワードも共有に含める(自動入力)</span>
         <label class="switch">
-          <input type="checkbox" id="includePassToggle" onchange="updateShareUrlDisplay()">
+          <input type="checkbox" id="includePassToggle" onchange="generateShortUrlDisplay()">
           <span class="slider"></span>
         </label>
       </div>
@@ -249,13 +254,9 @@
       <div id="share-url"></div>
 
       <div class="action-group">
-        <button class="btn btn-shorten" onclick="shortenCurrentUrl()" id="shorten-btn">🔗 その場でURLを短縮</button>
-      </div>
-      <div class="action-group">
         <button class="btn btn-secondary" onclick="copyUrl()" id="copy-btn">📋 コピー</button>
-        <button class="btn btn-qr" onclick="showQRCode()">📱 QR表示</button>
+        <button class="btn btn-qr" onclick="showQRCode()">📱 QRコード表示</button>
       </div>
-      <p style="font-size: 0.75rem; color: var(--text-muted); text-align: center; margin-top: 8px;">※URLが長すぎる場合、X(旧Twitter)等でシェアしづらいので短縮機能をご利用ください。</p>
     </div>
   </div>
 
@@ -295,7 +296,7 @@
     <button class="btn btn-secondary" onclick="goToMenu()">自分もクイズを作る</button>
   </div>
 
-  <footer>© tr0310 | Version 1.9.0</footer>
+  <footer>© tr0310 | Version 2.0.0 (Auto Shorten & Compressed)</footer>
 </div>
 
 <!-- QRコードモーダル -->
@@ -314,8 +315,7 @@
   let currentQIndex = 0;
   let score = 0;
   let requiredPwdHash = null;
-  let generatedBaseUrl = '';
-  let isShortened = false; // 短縮済みフラグ
+  let generatedBaseUrl = ''; // 圧縮済みのクイズのベースURL
 
   function normalizeText(str) { return str.trim().toLowerCase().replace(/\s+/g, '').replace(/[Ａ-Ｚａ-ｚ０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0)); }
   async function sha256(msg) {
@@ -323,8 +323,21 @@
     const buf = await crypto.subtle.digest('SHA-256', uint8);
     return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
   }
-  function encodeData(data) { return btoa(encodeURIComponent(JSON.stringify(data)).replace(/%([0-9A-F]{2})/g, (m, p1) => String.fromCharCode('0x' + p1))); }
-  function decodeData(str) { return JSON.parse(decodeURIComponent(Array.prototype.map.call(atob(str), c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''))); }
+
+  // ★変更点1: LZStringを用いたデータ超圧縮（長いURLエラーを防ぐ）
+  function encodeData(data) {
+    return LZString.compressToEncodedURIComponent(JSON.stringify(data));
+  }
+  function decodeData(str) {
+    try {
+      // まず圧縮版でデコードを試みる
+      const decompressed = LZString.decompressFromEncodedURIComponent(str);
+      if (decompressed) return JSON.parse(decompressed);
+    } catch(e) {}
+    // 失敗した場合は旧バージョン（v1.x）の形式でデコード（互換性確保）
+    return JSON.parse(decodeURIComponent(Array.prototype.map.call(atob(str), c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join('')));
+  }
+
   function shuffleArray(array) { const arr = [...array]; for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; }
 
   function hideAll() { ['creator-menu', 'manage-mode', 'ai-import-mode', 'create-mode', 'password-screen', 'play-mode', 'score-mode'].forEach(id => document.getElementById(id).classList.add('hidden')); }
@@ -333,10 +346,17 @@
   function showAiImportMode() { hideAll(); document.getElementById('ai-import-mode').classList.remove('hidden'); }
   function showManageMode() { hideAll(); document.getElementById('manage-mode').classList.remove('hidden'); }
 
+  // 編集モードでの短縮URL展開処理
   async function loadQuizForEdit() {
     let url = document.getElementById('manage-url').value.trim();
     const pwd = document.getElementById('manage-pwd').value;
     if (!url) return alert('URLを入力してください');
+
+    // 短縮URLの場合は元のURLにリダイレクトして展開する必要があるためFetchで取得
+    if (url.includes('is.gd') || url.includes('tinyurl')) {
+      alert('短縮URLからの直接編集は現在開発中です。作成時に発行された元の長いURL（#q=...）をお持ちの場合はそちらを入力してください。');
+      return;
+    }
 
     let hashStr = url;
     if (url.includes('#q=')) hashStr = url.split('#q=')[1];
@@ -370,6 +390,7 @@
       } else { block.querySelector('.text-ans').value = item[6]; }
     });
     document.getElementById('creator-password').value = ''; document.getElementById('player-password').value = '';
+    document.getElementById('share-area').classList.add('hidden');
     alert('読み込みました。再編集後「URLを発行」してください。');
   }
 
@@ -415,6 +436,7 @@
     container.appendChild(block); updateTypeUI(qCount);
   }
 
+  // ★変更点2: URLを生成したら「自動的に」短縮APIを叩く
   async function generateQuiz() {
     const blocks = document.querySelectorAll('.q-block');
     const quizList = [];
@@ -445,37 +467,91 @@
     const rCp = document.getElementById('creator-password').value; const rPp = document.getElementById('player-password').value;
     const cpHash = rCp ? await sha256(rCp) : null; const ppHash = rPp ? await sha256(rPp) : null;
 
-    const payload = { v: 3, cp: cpHash, pp: ppHash, d: quizList };
-    const encoded = encodeData(payload);
+    const payload = { v: 4, cp: cpHash, pp: ppHash, d: quizList };
+    const encoded = encodeData(payload); // LZStringで超圧縮
     const baseUrl = window.location.href.split('#')[0].split('?')[0];
     
     generatedBaseUrl = `${baseUrl}#q=${encoded}`;
+    
+    // UIをローディング状態に
+    const btn = document.getElementById('generate-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<div class="spinner"></div> 爆速でURLを短縮中...';
+    
     document.getElementById('share-area').classList.remove('hidden');
-    updateShareUrlDisplay();
+    document.getElementById('share-url').innerHTML = '<div class="spinner" style="border-top-color: var(--primary);"></div>';
+
+    // 自動短縮の実行
+    await generateShortUrlDisplay();
+    
+    btn.disabled = false;
+    btn.innerHTML = '🚀 更新を適用する'; // 2回目以降はテキストを変える
   }
 
-  // URL表示更新（パスワード付与＆短縮ボタンリセット）
-  function updateShareUrlDisplay() {
+  // パスワード入力が変わった時にURLが変わるので再生成が必要なことを知らせる（自動生成はしない、重いので）
+  function handlePasswordChange() {
+    if(!document.getElementById('share-area').classList.contains('hidden')) {
+      document.getElementById('generate-btn').innerHTML = '⚠️ パスワード変更を適用して再短縮する';
+      document.getElementById('generate-btn').style.backgroundColor = 'var(--warning)';
+    }
+  }
+
+  // ★非同期で外部APIを叩いて短縮する関数（Promiseでラップ）
+  function fetchShortUrl(longUrl) {
+    return new Promise((resolve, reject) => {
+      const callbackName = 'jsonp_cb_' + Math.round(100000 * Math.random());
+      
+      const timeoutId = setTimeout(() => {
+        delete window[callbackName];
+        reject(new Error('timeout'));
+      }, 5000); // 5秒でタイムアウト
+
+      window[callbackName] = function(data) {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if(data && data.shorturl) { resolve(data.shorturl); } 
+        else { reject(new Error('api_error')); }
+      };
+
+      const script = document.createElement('script');
+      script.src = `https://is.gd/create.php?format=json&url=${encodeURIComponent(longUrl)}&callback=${callbackName}`;
+      script.onload = () => document.body.removeChild(script);
+      script.onerror = () => {
+        clearTimeout(timeoutId); reject(new Error('network_error')); document.body.removeChild(script);
+      };
+      document.body.appendChild(script);
+    });
+  }
+
+  // 短縮URLを生成して画面に表示するメイン処理
+  async function generateShortUrlDisplay() {
     if (!generatedBaseUrl) return;
-    let url = generatedBaseUrl;
+    
+    let urlToShorten = generatedBaseUrl;
     const includePass = document.getElementById('includePassToggle').checked;
     const playerPwd = document.getElementById('player-password').value;
 
-    // パスワード自動入力用パラメータを付与
     if (includePass && playerPwd) {
-      const parts = url.split('#');
+      const parts = urlToShorten.split('#');
       const sep = parts[0].includes('?') ? '&' : '?';
-      url = `${parts[0]}${sep}pwd=${encodeURIComponent(playerPwd)}#${parts[1]}`;
+      urlToShorten = `${parts[0]}${sep}pwd=${encodeURIComponent(playerPwd)}#${parts[1]}`;
     }
-    
-    document.getElementById('share-url').innerText = url;
-    
-    // パスワードON/OFFを切り替えたら短縮をリセットしてボタンを復活
-    isShortened = false;
-    const shortenBtn = document.getElementById('shorten-btn');
-    shortenBtn.style.display = 'block';
-    shortenBtn.disabled = false;
-    shortenBtn.innerText = '🔗 その場でURLを短縮';
+
+    const shareUrlDiv = document.getElementById('share-url');
+    shareUrlDiv.innerHTML = '<div class="spinner" style="border-top-color: var(--primary);"></div>';
+
+    try {
+      // 爆速自動短縮
+      const shortUrl = await fetchShortUrl(urlToShorten);
+      shareUrlDiv.innerText = shortUrl;
+      // ボタンの色を戻す
+      document.getElementById('generate-btn').style.backgroundColor = 'var(--primary)';
+    } catch (e) {
+      // 万が一失敗した場合のフォールバック（圧縮済みの長いURLを表示）
+      console.error(e);
+      shareUrlDiv.innerText = urlToShorten;
+      alert('自動短縮がタイムアウトしました。通信環境を確認するか、そのままのURLをご利用ください。（データ圧縮済みのためある程度短くなっています）');
+    }
   }
 
   function getDisplayUrl() { return document.getElementById('share-url').innerText; }
@@ -492,50 +568,18 @@
   function showQRCode() {
     const u = getDisplayUrl(); if(!u) return;
     const qc = document.getElementById('qrcode'); qc.innerHTML = '';
-    new QRCode(qc, { text: u, width: 160, height: 160 });
-    document.getElementById('qrUrlText').innerText = u;
-    document.getElementById('qrModal').classList.add('active');
+    
+    // 短縮されていれば余裕でQR化できる。長すぎるとエラーになる
+    try {
+      new QRCode(qc, { text: u, width: 180, height: 180, correctLevel : QRCode.CorrectLevel.L });
+      document.getElementById('qrUrlText').innerText = u;
+      document.getElementById('qrModal').classList.add('active');
+    } catch(e) {
+      alert('URLが長すぎるためQRコード化に失敗しました。問題数を減らすか、短縮に成功しているか確認してください。');
+    }
   }
 
   function closeQRModal() { document.getElementById('qrModal').classList.remove('active'); }
-
-  // アプリ内短縮機能 (is.gd JSONP API)
-  function shortenCurrentUrl() {
-    if(isShortened) return;
-    const currentUrl = getDisplayUrl();
-    if(!currentUrl) return;
-
-    const btn = document.getElementById('shorten-btn');
-    btn.innerText = '⏳ 短縮中...';
-    btn.disabled = true;
-
-    // JSONPコールバック関数の定義
-    const callbackName = 'jsonp_cb_' + Math.round(100000 * Math.random());
-    window[callbackName] = function(data) {
-      delete window[callbackName];
-      if(data.shorturl) {
-        document.getElementById('share-url').innerText = data.shorturl;
-        isShortened = true;
-        btn.style.display = 'none'; // 成功したら短縮ボタンを消す
-      } else {
-        alert('エラー: データ量が大きすぎるため短縮できません。そのままのURLをコピーしてください。');
-        btn.innerText = '🔗 その場でURLを短縮';
-        btn.disabled = false;
-      }
-    };
-
-    // スクリプトタグを注入してAPIリクエスト(CORSを回避)
-    const script = document.createElement('script');
-    script.src = `https://is.gd/create.php?format=json&url=${encodeURIComponent(currentUrl)}&callback=${callbackName}`;
-    script.onload = () => document.body.removeChild(script); // お掃除
-    script.onerror = () => {
-      alert('通信エラーが発生しました。インターネット接続を確認してください。');
-      btn.innerText = '🔗 その場でURLを短縮';
-      btn.disabled = false;
-      document.body.removeChild(script);
-    };
-    document.body.appendChild(script);
-  }
 
   async function checkPassword() {
     const inputPwd = document.getElementById('play-password').value;
