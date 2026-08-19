@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>サーバーレス 高機能クイズメーカー v1.7</title>
+  <title>サーバーレス 高機能クイズメーカー v1.9</title>
   <!-- QRコード生成ライブラリ -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <style>
@@ -57,17 +57,9 @@
     .header p { margin: 0; color: var(--text-muted); font-size: 0.9rem; }
 
     .nav-btn {
-      position: absolute;
-      right: 0;
-      top: 0;
-      background: #f1f5f9;
-      border: 1px solid var(--border);
-      color: var(--text-muted);
-      padding: 6px 12px;
-      border-radius: 20px;
-      font-size: 0.8rem;
-      font-weight: 600;
-      cursor: pointer;
+      position: absolute; right: 0; top: 0;
+      background: #f1f5f9; border: 1px solid var(--border); color: var(--text-muted);
+      padding: 6px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; cursor: pointer;
     }
     .nav-btn:hover { background: #e2e8f0; color: var(--text); transform: translateY(-1px); }
 
@@ -111,6 +103,7 @@
     .btn:hover { background: var(--primary-hover); transform: translateY(-2px); box-shadow: 0 6px 16px rgba(99, 102, 241, 0.3); }
     .btn-secondary { background: #ffffff; color: var(--primary); border: 2px solid var(--primary); box-shadow: none; }
     .btn-secondary:hover { background: #f0f3ff; }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
     .password-area { background: #fffbeb; border: 1px solid #fde68a; border-radius: 12px; padding: 16px; margin-bottom: 24px; }
     .password-area label { color: #d97706; }
@@ -133,7 +126,6 @@
     #share-area { margin-top: 20px; padding: 16px; background: #f8fafc; border-radius: 12px; border: 1px dashed var(--border); }
     #share-url { word-break: break-all; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px; background: #fff; padding: 12px; border-radius: 8px; border: 1px solid var(--border); }
 
-    /* スイッチ & ボタングループ (新規追加) */
     .switch-container { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: #ffffff; border: 1px solid var(--border); border-radius: 10px; margin-bottom: 16px; }
     .switch-label { font-size: 0.85rem; font-weight: 600; color: var(--text); }
     .switch { position: relative; display: inline-block; width: 46px; height: 24px; }
@@ -143,12 +135,14 @@
     input:checked + .slider { background-color: var(--primary); }
     input:checked + .slider:before { transform: translateX(22px); }
 
-    .action-group { display: flex; gap: 10px; }
-    .action-group .btn { margin-bottom: 0; padding: 12px; font-size: 0.9rem; flex: 1; display: flex; justify-content: center; align-items: center; gap: 4px; }
+    .action-group { display: flex; gap: 8px; margin-bottom: 8px; }
+    .action-group .btn { margin-bottom: 0; padding: 10px; font-size: 0.85rem; flex: 1; display: flex; justify-content: center; align-items: center; }
+    
+    .btn-shorten { background-color: #8b5cf6 !important; } /* 紫色 */
+    .btn-shorten:hover { background-color: #7c3aed !important; }
     .btn-qr { background-color: #0284c7 !important; }
     .btn-qr:hover { background-color: #0369a1 !important; }
 
-    /* モーダル */
     .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; z-index: 1000; }
     .modal-overlay.active { display: flex; }
     .modal { background: white; padding: 24px; border-radius: 16px; text-align: center; max-width: 300px; width: 90%; animation: fadeInUp 0.3s ease; }
@@ -158,28 +152,17 @@
     footer { text-align: center; font-size: 0.85rem; color: var(--text-muted); margin-top: 8px; letter-spacing: 0.05em; }
     .hidden { display: none !important; }
     .ai-prompt-box { background: #1e293b; color: #f8fafc; padding: 12px; border-radius: 8px; font-size: 0.8rem; font-family: monospace; white-space: pre-wrap; margin-bottom: 12px; }
-    .spinner { display: inline-block; width: 32px; height: 32px; border: 4px solid rgba(99, 102, 241, 0.2); border-left-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite; }
-    @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
 
 <div class="container">
 
-  <!-- リダイレクト画面 -->
-  <div id="redirect-screen" class="card hidden" style="text-align: center;">
-    <div class="header">
-      <div class="spinner" style="margin-bottom: 16px;"></div>
-      <h1>リダイレクト中...</h1>
-      <p>microCMSからクイズデータを取得しています</p>
-    </div>
-  </div>
-
   <!-- 作成者メニュー -->
   <div id="creator-menu" class="card">
     <div class="header">
       <h1>Quiz Maker</h1>
-      <p>作成者メニュー (v1.7)</p>
+      <p>作成者メニュー (v1.9)</p>
     </div>
     <div class="menu-btn" onclick="showCreateMode()">
       <h3>✍️ 手動でクイズを作る</h3>
@@ -199,7 +182,7 @@
       <h1>クイズの管理・編集</h1>
     </div>
     <div class="form-group">
-      <label>発行したURL（またはハッシュコード）</label>
+      <label>URL（ハッシュコードを含むURL）</label>
       <input type="text" id="manage-url" placeholder="https://...">
     </div>
     <div class="form-group">
@@ -249,13 +232,12 @@
 
     <div id="questions-container"></div>
     <button class="btn btn-secondary" onclick="addQuestionBlock()">＋ 問題を追加する</button>
-    <button class="btn" onclick="generateQuiz()">暗号化してURLを発行する</button>
+    <button class="btn" onclick="generateQuiz()">URLを発行する</button>
 
-    <!-- 共有エリア（アップデート） -->
+    <!-- 共有エリア -->
     <div id="share-area" class="hidden">
       <p style="font-size: 0.85rem; font-weight: bold; margin-bottom: 8px;">共有用URL</p>
-      <div id="share-url"></div>
-
+      
       <div class="switch-container">
         <span class="switch-label">パスワードも共有に含める(自動入力)</span>
         <label class="switch">
@@ -264,11 +246,16 @@
         </label>
       </div>
 
+      <div id="share-url"></div>
+
       <div class="action-group">
-        <button class="btn btn-secondary" onclick="copyUrl()" id="copy-btn">コピー</button>
-        <button class="btn btn-qr" onclick="showQRCode()">QRコード</button>
-        <button class="btn" onclick="shareUrl()">共有</button>
+        <button class="btn btn-shorten" onclick="shortenCurrentUrl()" id="shorten-btn">🔗 その場でURLを短縮</button>
       </div>
+      <div class="action-group">
+        <button class="btn btn-secondary" onclick="copyUrl()" id="copy-btn">📋 コピー</button>
+        <button class="btn btn-qr" onclick="showQRCode()">📱 QR表示</button>
+      </div>
+      <p style="font-size: 0.75rem; color: var(--text-muted); text-align: center; margin-top: 8px;">※URLが長すぎる場合、X(旧Twitter)等でシェアしづらいので短縮機能をご利用ください。</p>
     </div>
   </div>
 
@@ -308,7 +295,7 @@
     <button class="btn btn-secondary" onclick="goToMenu()">自分もクイズを作る</button>
   </div>
 
-  <footer>© tr0310 | Version 1.7.0</footer>
+  <footer>© tr0310 | Version 1.9.0</footer>
 </div>
 
 <!-- QRコードモーダル -->
@@ -322,18 +309,13 @@
 </div>
 
 <script>
-  // --- microCMS 設定項目 ---
-  const SERVICE_DOMAIN = 'url'; // ご自身のmicroCMSサービスドメイン
-  const API_KEY = 'uabV6gBgUz08Vl176fPJgcuWl4njm5D7xA4F';    // APIキー
-  const ENDPOINT = 'short';     // エンドポイント名
-  // ------------------------
-
   let qCount = 0;
   let currentQuizData = [];
   let currentQIndex = 0;
   let score = 0;
   let requiredPwdHash = null;
-  let generatedBaseUrl = ''; // 共有URLのベース保持用
+  let generatedBaseUrl = '';
+  let isShortened = false; // 短縮済みフラグ
 
   function normalizeText(str) { return str.trim().toLowerCase().replace(/\s+/g, '').replace(/[Ａ-Ｚａ-ｚ０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0)); }
   async function sha256(msg) {
@@ -345,41 +327,27 @@
   function decodeData(str) { return JSON.parse(decodeURIComponent(Array.prototype.map.call(atob(str), c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''))); }
   function shuffleArray(array) { const arr = [...array]; for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; }
 
-  function hideAll() { ['redirect-screen', 'creator-menu', 'manage-mode', 'ai-import-mode', 'create-mode', 'password-screen', 'play-mode', 'score-mode'].forEach(id => document.getElementById(id).classList.add('hidden')); }
+  function hideAll() { ['creator-menu', 'manage-mode', 'ai-import-mode', 'create-mode', 'password-screen', 'play-mode', 'score-mode'].forEach(id => document.getElementById(id).classList.add('hidden')); }
   function goToMenu() { window.location.href = window.location.pathname; }
   function showCreateMode() { hideAll(); document.getElementById('create-mode').classList.remove('hidden'); if (qCount === 0) addQuestionBlock(); }
   function showAiImportMode() { hideAll(); document.getElementById('ai-import-mode').classList.remove('hidden'); }
   function showManageMode() { hideAll(); document.getElementById('manage-mode').classList.remove('hidden'); }
 
-  // 編集ロジック
   async function loadQuizForEdit() {
     let url = document.getElementById('manage-url').value.trim();
     const pwd = document.getElementById('manage-pwd').value;
     if (!url) return alert('URLを入力してください');
-
-    if (url.includes('?id=')) {
-      const shortId = new URL(url).searchParams.get('id');
-      try {
-        const res = await fetch(`https://${SERVICE_DOMAIN}.microcms.io/api/v1/${ENDPOINT}/${shortId}`, { headers: { 'X-MICROCMS-API-KEY': API_KEY }});
-        if (res.ok) { const data = await res.json(); url = data.originalUrl; }
-      } catch (err) {}
-    }
 
     let hashStr = url;
     if (url.includes('#q=')) hashStr = url.split('#q=')[1];
 
     try {
       const decoded = decodeData(hashStr);
-      let rawData = [];
-      if (Array.isArray(decoded)) return alert('古い形式のため編集不可です。');
-      if (decoded.v === 2) { alert('古い形式です。パスワードなしで開きます。'); rawData = decoded.d; }
-      if (decoded.v === 3) {
-        rawData = decoded.d;
-        if (decoded.cp) {
-          if (!pwd) return alert('作成者パスワードが必要です。');
-          const inputHash = await sha256(pwd);
-          if (inputHash !== decoded.cp) return alert('パスワードが違います。');
-        }
+      let rawData = decoded.d;
+      if (decoded.cp) {
+        if (!pwd) return alert('作成者パスワードが必要です。');
+        const inputHash = await sha256(pwd);
+        if (inputHash !== decoded.cp) return alert('パスワードが違います。');
       }
       showCreateMode();
       populateEditor(rawData);
@@ -402,10 +370,9 @@
       } else { block.querySelector('.text-ans').value = item[6]; }
     });
     document.getElementById('creator-password').value = ''; document.getElementById('player-password').value = '';
-    alert('読み込みました。再編集後「URLを発行」してください。\n※パスワードは引き継がれません。');
+    alert('読み込みました。再編集後「URLを発行」してください。');
   }
 
-  // AIインポート
   function copyPrompt() { navigator.clipboard.writeText(document.getElementById('ai-prompt-text').innerText); alert('コピーしました！'); }
   function importAiJson() {
     try {
@@ -448,7 +415,6 @@
     container.appendChild(block); updateTypeUI(qCount);
   }
 
-  // クイズ生成
   async function generateQuiz() {
     const blocks = document.querySelectorAll('.q-block');
     const quizList = [];
@@ -482,57 +448,49 @@
     const payload = { v: 3, cp: cpHash, pp: ppHash, d: quizList };
     const encoded = encodeData(payload);
     const baseUrl = window.location.href.split('#')[0].split('?')[0];
-    const fullUrl = `${baseUrl}#q=${encoded}`;
-
+    
+    generatedBaseUrl = `${baseUrl}#q=${encoded}`;
     document.getElementById('share-area').classList.remove('hidden');
-    document.getElementById('share-url').innerText = 'microCMSで短縮URLを生成中...';
-
-    let finalUrl = fullUrl;
-    try {
-      const res = await fetch(`https://${SERVICE_DOMAIN}.microcms.io/api/v1/${ENDPOINT}`, {
-        method: 'POST', headers: { 'X-MICROCMS-API-KEY': API_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ originalUrl: fullUrl })
-      });
-      if (!res.ok) throw new Error('API Error');
-      const data = await res.json();
-      finalUrl = `${baseUrl}?id=${data.id}`;
-    } catch (err) {}
-
-    generatedBaseUrl = finalUrl;
     updateShareUrlDisplay();
   }
 
-  // 共有URLの表示更新（パスワードを含めるかの制御）
+  // URL表示更新（パスワード付与＆短縮ボタンリセット）
   function updateShareUrlDisplay() {
-    if (!generatedBaseUrl || generatedBaseUrl.includes('生成中')) return;
+    if (!generatedBaseUrl) return;
     let url = generatedBaseUrl;
     const includePass = document.getElementById('includePassToggle').checked;
     const playerPwd = document.getElementById('player-password').value;
 
+    // パスワード自動入力用パラメータを付与
     if (includePass && playerPwd) {
-      if (url.includes('?id=')) {
-        url += `&pwd=${encodeURIComponent(playerPwd)}`;
-      } else if (url.includes('#q=')) {
-        const parts = url.split('#');
-        const sep = parts[0].includes('?') ? '&' : '?';
-        url = `${parts[0]}${sep}pwd=${encodeURIComponent(playerPwd)}#${parts[1]}`;
-      }
+      const parts = url.split('#');
+      const sep = parts[0].includes('?') ? '&' : '?';
+      url = `${parts[0]}${sep}pwd=${encodeURIComponent(playerPwd)}#${parts[1]}`;
     }
+    
     document.getElementById('share-url').innerText = url;
+    
+    // パスワードON/OFFを切り替えたら短縮をリセットしてボタンを復活
+    isShortened = false;
+    const shortenBtn = document.getElementById('shorten-btn');
+    shortenBtn.style.display = 'block';
+    shortenBtn.disabled = false;
+    shortenBtn.innerText = '🔗 その場でURLを短縮';
   }
 
-  // アクションボタン処理
   function getDisplayUrl() { return document.getElementById('share-url').innerText; }
 
   function copyUrl() {
-    const u = getDisplayUrl(); if(!u || u.includes('生成中')) return;
+    const u = getDisplayUrl(); if(!u) return;
     navigator.clipboard.writeText(u);
     const btn = document.getElementById('copy-btn');
-    btn.innerText = 'コピー完了!'; btn.style.background = 'var(--success)'; btn.style.color = '#fff';
-    setTimeout(() => { btn.innerText = 'コピー'; btn.style.background = ''; btn.style.color = ''; }, 2000);
+    const originalText = btn.innerText;
+    btn.innerText = '✅ コピー完了!'; btn.style.background = 'var(--success)'; btn.style.color = '#fff';
+    setTimeout(() => { btn.innerText = originalText; btn.style.background = ''; btn.style.color = ''; }, 2000);
   }
 
   function showQRCode() {
-    const u = getDisplayUrl(); if(!u || u.includes('生成中')) return;
+    const u = getDisplayUrl(); if(!u) return;
     const qc = document.getElementById('qrcode'); qc.innerHTML = '';
     new QRCode(qc, { text: u, width: 160, height: 160 });
     document.getElementById('qrUrlText').innerText = u;
@@ -541,15 +499,44 @@
 
   function closeQRModal() { document.getElementById('qrModal').classList.remove('active'); }
 
-  async function shareUrl() {
-    const u = getDisplayUrl(); if(!u || u.includes('生成中')) return;
-    if (navigator.share) {
-      try { await navigator.share({ title: 'クイズに挑戦！', text: 'クイズを作成したよ！挑戦してみてね✨', url: u }); }
-      catch (e) { if(e.name !== 'AbortError') copyUrl(); }
-    } else { copyUrl(); }
+  // アプリ内短縮機能 (is.gd JSONP API)
+  function shortenCurrentUrl() {
+    if(isShortened) return;
+    const currentUrl = getDisplayUrl();
+    if(!currentUrl) return;
+
+    const btn = document.getElementById('shorten-btn');
+    btn.innerText = '⏳ 短縮中...';
+    btn.disabled = true;
+
+    // JSONPコールバック関数の定義
+    const callbackName = 'jsonp_cb_' + Math.round(100000 * Math.random());
+    window[callbackName] = function(data) {
+      delete window[callbackName];
+      if(data.shorturl) {
+        document.getElementById('share-url').innerText = data.shorturl;
+        isShortened = true;
+        btn.style.display = 'none'; // 成功したら短縮ボタンを消す
+      } else {
+        alert('エラー: データ量が大きすぎるため短縮できません。そのままのURLをコピーしてください。');
+        btn.innerText = '🔗 その場でURLを短縮';
+        btn.disabled = false;
+      }
+    };
+
+    // スクリプトタグを注入してAPIリクエスト(CORSを回避)
+    const script = document.createElement('script');
+    script.src = `https://is.gd/create.php?format=json&url=${encodeURIComponent(currentUrl)}&callback=${callbackName}`;
+    script.onload = () => document.body.removeChild(script); // お掃除
+    script.onerror = () => {
+      alert('通信エラーが発生しました。インターネット接続を確認してください。');
+      btn.innerText = '🔗 その場でURLを短縮';
+      btn.disabled = false;
+      document.body.removeChild(script);
+    };
+    document.body.appendChild(script);
   }
 
-  // クイズ回答ロジック
   async function checkPassword() {
     const inputPwd = document.getElementById('play-password').value;
     const inputHash = await sha256(inputPwd);
@@ -609,44 +596,22 @@
 
   function restartQuiz() { currentQIndex = 0; score = 0; currentQuizData = shuffleArray(currentQuizData); hideAll(); document.getElementById('play-mode').classList.remove('hidden'); loadQuestion(0); }
 
-  // 初期ロード・リダイレクト・オートログイン対応
   window.onload = async function() {
     const params = new URLSearchParams(window.location.search);
-    const shortId = params.get('id');
-    const pwdParam = params.get('pwd'); // 自動入力用パスワード
-
-    if (shortId) {
-      hideAll(); document.getElementById('redirect-screen').classList.remove('hidden');
-      try {
-        const res = await fetch(`https://${SERVICE_DOMAIN}.microcms.io/api/v1/${ENDPOINT}/${shortId}`, { headers: { 'X-MICROCMS-API-KEY': API_KEY } });
-        if (!res.ok) throw new Error('短縮URLが見つかりません');
-        const data = await res.json();
-        if (data.originalUrl) {
-          let redir = data.originalUrl;
-          if (pwdParam) {
-            const p = redir.split('#'); const sep = p[0].includes('?') ? '&' : '?';
-            redir = `${p[0]}${sep}pwd=${encodeURIComponent(pwdParam)}${p[1] ? '#'+p[1] : ''}`;
-          }
-          window.location.replace(redir); return;
-        } else throw new Error('URL未登録');
-      } catch (err) { alert(err.message); goToMenu(); return; }
-    }
+    const pwdParam = params.get('pwd');
 
     const hash = window.location.hash;
     if (hash && hash.startsWith('#q=')) {
       hideAll();
       try {
         const decoded = decodeData(hash.replace('#q=', ''));
-        let raw = [];
-        if (Array.isArray(decoded)) { raw = decoded; requiredPwdHash = null; }
-        else if (decoded.v === 2) { raw = decoded.d; requiredPwdHash = decoded.p; }
-        else if (decoded.v === 3) { raw = decoded.d; requiredPwdHash = decoded.pp; }
+        let raw = decoded.d;
+        requiredPwdHash = decoded.pp;
 
         currentQuizData = shuffleArray(raw.map(i => Array.isArray(i) ? { type: i[0]===1?'select':i[0]===2?'tf':'text', q: i[1], opts: i[2], exp: i[3], salt: i[4], ansHash: i[5], correctVal: i[6] } : i));
 
         if (requiredPwdHash) {
           document.getElementById('password-screen').classList.remove('hidden');
-          // URLにパスワードがあれば自動入力してログイン試行
           if (pwdParam) {
             document.getElementById('play-password').value = pwdParam;
             checkPassword();
